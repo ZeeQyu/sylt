@@ -61,7 +61,7 @@ impl SheepBundle {
             sprite_bundle: SpriteBundle {
                 transform: Transform {
                     translation: Vec3::new(position.x, position.y, 0.0),
-                    scale: Vec3::splat(4.0),
+                    scale: Vec3::splat(2.0),
                     ..default()
                 },
                 texture: image,
@@ -78,7 +78,7 @@ fn spawn_player(commands: &mut Commands, player_texture: Handle<Image>) {
         SpriteBundle {
             transform: Transform {
                 translation: Vec3::new(-400.0, 0.0, 0.0),
-                scale: Vec3::splat(4.0),
+                scale: Vec3::splat(2.0),
                 ..default()
             },
             texture: player_texture,
