@@ -1,7 +1,6 @@
 use bevy::{
     prelude::*,
     time::FixedTimestep,
-    // sprite::collide_aabb::{collide, Collision},
 };
 
 const TIME_STEP: f32 = 1.0 / 60.0;
@@ -15,7 +14,9 @@ fn main() {
         .add_system_set(
             SystemSet::new()
                 .with_run_criteria(FixedTimestep::step(TIME_STEP as f64))
-                .with_system(move_player)
+                .with_system(apply_velocity)
+                .with_system(apply_player_input)
+                .with_system(move_sheep)
         )
         .run();
 }
@@ -35,7 +36,16 @@ fn setup(
     let player_texture: Handle<Image> = asset_server.load("Collie.png");
     let sheep_texture: Handle<Image> = asset_server.load("Sheep.png");
     spawn_player(&mut commands, player_texture);
-    spawn_sheep(&mut commands, sheep_texture);
+    for x_counter in -3..3 {
+        for y_counter in -3..3 {
+            let spacing: f32 = 50.0;
+            let position = Vec2::new(
+                (x_counter as f32) * &spacing,
+                (y_counter as f32) * &spacing,
+            );
+            spawn_sheep(&mut commands, &position, sheep_texture.clone());
+        }
+    }
 }
 
 
@@ -43,35 +53,22 @@ fn setup(
 struct Collider;
 
 #[derive(Component)]
+struct Velocity {
+    velocity: Vec3,
+}
+impl Velocity {
+    fn new() -> Self {
+        Self {
+            velocity: Vec3::ZERO
+        }
+    }
+}
+
+#[derive(Component)]
 struct Player;
 
 #[derive(Component)]
 struct Sheep;
-
-#[derive(Bundle)]
-struct SheepBundle {
-    sprite_bundle: SpriteBundle,
-    collider: Collider,
-    sheep: Sheep,
-}
-
-impl SheepBundle {
-    fn new(position: Vec2, image: Handle<Image>) -> SheepBundle {
-        SheepBundle {
-            sprite_bundle: SpriteBundle {
-                transform: Transform {
-                    translation: Vec3::new(position.x, position.y, 0.0),
-                    scale: Vec3::splat(4.0),
-                    ..default()
-                },
-                texture: image,
-                ..default()
-            },
-            collider: Collider,
-            sheep: Sheep,
-        }
-    }
-}
 
 fn spawn_player(commands: &mut Commands, player_texture: Handle<Image>) {
     commands.spawn((
@@ -84,51 +81,86 @@ fn spawn_player(commands: &mut Commands, player_texture: Handle<Image>) {
             texture: player_texture,
             ..default()
         },
-        Player
+        Player,
+        Velocity::new()
     ));
 }
 
-
-fn spawn_sheep(commands: &mut Commands, sheep_texture: Handle<Image>) {
-    for x_counter in -3..3 {
-        for y_counter in -3..3 {
-            let spacing: f32 = 50.0;
-            let position = Vec2::new(
-                (x_counter as f32) * &spacing,
-                (y_counter as f32) * &spacing,
-            );
-            commands.spawn(SheepBundle::new(position, sheep_texture.clone()));
-        }
-    }
+fn spawn_sheep(commands: &mut Commands, position: &Vec2, image: Handle<Image>) {
+    commands.spawn(
+        (
+            SpriteBundle {
+                transform: Transform {
+                    translation: Vec3::new(position.x, position.y, 0.0),
+                    scale: Vec3::splat(
+                        4.0),
+                    ..default()
+                },
+                texture: image,
+                ..default()
+            },
+            Collider,
+            Sheep,
+            Velocity::new(),
+        )
+    );
 }
 
-fn move_player(
+fn apply_player_input(
     keyboard_input: Res<Input<KeyCode>>,
-    mut query: Query<&mut Transform, With<Player>>,
+    mut query: Query<&mut Velocity, With<Player>>,
 ) {
-    let mut player_transform = query.single_mut();
     let mut direction = Vec2::new(0.0, 0.0);
     if keyboard_input.pressed(KeyCode::Left) ||
         keyboard_input.pressed(KeyCode::A) {
         direction.x -= 1.0;
     }
     if keyboard_input.pressed(KeyCode::Right) ||
-        keyboard_input.pressed(KeyCode::D){
+        keyboard_input.pressed(KeyCode::D) {
         direction.x += 1.0;
     }
     if keyboard_input.pressed(KeyCode::Up) ||
-        keyboard_input.pressed(KeyCode::W){
+        keyboard_input.pressed(KeyCode::W) {
         direction.y += 1.0;
     }
     if keyboard_input.pressed(KeyCode::Down) ||
-        keyboard_input.pressed(KeyCode::S){
+        keyboard_input.pressed(KeyCode::S) {
         direction.y -= 1.0;
     }
     let player_speed: f32 = 200.0;
-    let player_position = Vec3::new(
-        player_transform.translation.x + direction.x * player_speed * TIME_STEP,
-        player_transform.translation.y + direction.y * player_speed * TIME_STEP,
+    let mut player_velocity = query.single_mut();
+    direction = direction.normalize_or_zero();
+    player_velocity.velocity = Vec3::new(
+        direction.x * player_speed,
+        direction.y * player_speed,
         0.0,
     );
-    player_transform.translation = player_position;
+}
+
+fn move_sheep(
+    mut player_query: Query<(&Transform, With<Player>)>,
+    mut sheep_query: Query<((&mut Velocity, &Transform), With<Sheep>)>,
+) {
+    let (Transform { translation: player_position, .. }, ()) = player_query.single();
+    for (
+        (
+            mut velocity,
+            &Transform { translation: sheep_position, .. }
+        ),
+        ()
+    ) in sheep_query.iter_mut() {
+        let scare_distance = 200.0;
+        let sheep_speed = 120.0;
+        if sheep_position.distance(*player_position) < scare_distance {
+            velocity.velocity = (*player_position - sheep_position).normalize_or_zero() * sheep_speed;
+        }
+    }
+}
+
+fn apply_velocity(
+    mut query: Query<(&mut Transform, &Velocity)>
+) {
+    for (mut transform, Velocity { velocity }) in query.iter_mut() {
+        transform.translation += *velocity * TIME_STEP;
+    }
 }
