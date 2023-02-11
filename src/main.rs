@@ -60,7 +60,7 @@ impl SheepBundle {
                 // },
                 transform: Transform {
                     translation: Vec3::new(position.x, position.y, 0.0),
-                    scale: Vec3::splat(0.3),
+                    scale: Vec3::splat(4.0),
                     ..default()
                 },
                 // sprite: Sprite {
@@ -77,16 +77,12 @@ impl SheepBundle {
 }
 
 fn spawn_player(commands: &mut Commands, asset_server: &Res<AssetServer>) {
-    let player_texture: Handle<Image> = asset_server.load("Sheep.png");
+    let player_texture: Handle<Image> = asset_server.load("Collie.png");
     commands.spawn((
         SpriteBundle {
             transform: Transform {
                 translation: Vec3::new(-400.0, 0.0, 0.0),
-                scale: Vec3::splat(0.3),
-                ..default()
-            },
-            sprite: Sprite {
-                color: Color::rgb(0.9, 0.3, 0.3),
+                scale: Vec3::splat(4.0),
                 ..default()
             },
             texture: player_texture,
