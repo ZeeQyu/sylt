@@ -39,26 +39,6 @@ struct Collider;
 #[derive(Component)]
 struct Player;
 
-fn spawn_player(commands: &mut Commands, asset_server: &Res<AssetServer>) {
-    let player_texture: Handle<Image> = asset_server.load("Sheep.png");
-    commands.spawn((
-        SpriteBundle {
-            transform: Transform {
-                translation: Vec3::new(-400.0, 0.0, 0.0),
-                scale: Vec3::splat(0.3),
-                ..default()
-            },
-            sprite: Sprite {
-                color: Color::rgb(0.9, 0.3, 0.3),
-                ..default()
-            },
-            texture: player_texture,
-            ..default()
-        },
-        Player
-    ));
-}
-
 #[derive(Component)]
 struct Sheep;
 
@@ -95,6 +75,27 @@ impl SheepBundle {
         }
     }
 }
+
+fn spawn_player(commands: &mut Commands, asset_server: &Res<AssetServer>) {
+    let player_texture: Handle<Image> = asset_server.load("Sheep.png");
+    commands.spawn((
+        SpriteBundle {
+            transform: Transform {
+                translation: Vec3::new(-400.0, 0.0, 0.0),
+                scale: Vec3::splat(0.3),
+                ..default()
+            },
+            sprite: Sprite {
+                color: Color::rgb(0.9, 0.3, 0.3),
+                ..default()
+            },
+            texture: player_texture,
+            ..default()
+        },
+        Player
+    ));
+}
+
 
 fn spawn_sheep(commands: &mut Commands, asset_server: &Res<AssetServer>) {
     let sheep_texture: Handle<Image> = asset_server.load("Sheep.png");
@@ -136,5 +137,3 @@ fn move_player(
     );
     player_transform.translation = player_position;
 }
-
-
