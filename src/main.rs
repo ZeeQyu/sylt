@@ -1,8 +1,8 @@
-use std::cmp::max;
 use bevy::{
     prelude::*,
     time::FixedTimestep,
 };
+use bevy_rapier2d::prelude::*;
 
 const TIME_STEP: f32 = 1.0 / 60.0;
 
@@ -10,7 +10,10 @@ fn main() {
     let background_color = Color::rgb_u8(46 as u8, 34 as u8, 47 as u8);
     App::new()
         .add_plugins(DefaultPlugins.set(ImagePlugin::default_nearest()))
+        .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(30.0))
+        .add_plugin(RapierDebugRenderPlugin::default())
         .insert_resource(ClearColor(background_color))
+        .insert_resource(RapierConfiguration { gravity: Vec2::ZERO, ..default() })
         .add_startup_system(setup)
         .add_system_set(
             SystemSet::new()
@@ -74,21 +77,21 @@ struct Flocking {
 struct YieldsToCollision {
     correction: Vec3,
 }
+//
+// #[derive(Component)]
+// struct Velocity {
+//     max_speed: f32,
+//     velocity: Vec3,
+// }
 
-#[derive(Component)]
-struct Velocity {
-    max_speed: f32,
-    velocity: Vec3,
-}
-
-impl Velocity {
-    fn new(max_speed: f32) -> Self {
-        Self {
-            max_speed,
-            velocity: Vec3::ZERO,
-        }
-    }
-}
+// impl Velocity {
+//     fn new(max_speed: f32) -> Self {
+//         Self {
+//             max_speed,
+//             velocity: Vec3::ZERO,
+//         }
+//     }
+// }
 
 fn spawn_player(commands: &mut Commands, player_texture: Handle<Image>) {
     let player_speed: f32 = 200.0;
@@ -96,30 +99,50 @@ fn spawn_player(commands: &mut Commands, player_texture: Handle<Image>) {
         SpriteBundle {
             transform: Transform {
                 translation: Vec3::new(-400.0, 0.0, 0.0),
-                scale: Vec3::splat(2.0),
                 ..default()
             },
             texture: player_texture,
+            sprite: Sprite {
+                custom_size: Some(Vec2::splat(32.0)),
+                ..default()
+            },
             ..default()
         },
         PlayerInput { direction: Vec3::ZERO },
-        Velocity::new(player_speed),
+        Collider::ball(10.0),
+        RigidBody::Dynamic,
+        Velocity::default(),
     ));
 }
 
 fn spawn_sheep(commands: &mut Commands, position: &Vec2, image: Handle<Image>) {
+    // commands
+    //     .spawn(Collider::cuboid(500.0, 50.0))
+    //     .insert(TransformBundle::from(
+    //         Transform::from_xyz(0.0, -100.0, 0.0)
+    //     ));
+    // commands
+    //     .spawn(RigidBody::Dynamic)
+    //     .insert(Collider::ball(50.0))
+    //     .insert(Restitution::coefficient(0.7))
+    //     .insert(TransformBundle::from(Transform::from_xyz(0.0, 400.0, 0.0)));
     commands.spawn(
         (
             SpriteBundle {
                 transform: Transform {
                     translation: Vec3::new(position.x, position.y, 0.0),
-                    scale: Vec3::splat(
-                        2.0),
                     ..default()
                 },
                 texture: image,
+                sprite: Sprite {
+                    custom_size: Some(Vec2::splat(32.0)),
+                    ..default()
+                },
                 ..default()
             },
+            Collider::ball(10.0),
+            RigidBody::Dynamic,
+            Velocity::default(),
             Flocking {
                 neighbour_positions: Vec::new(),
                 neighbour_velocities: Vec::new(),
@@ -134,7 +157,6 @@ fn spawn_sheep(commands: &mut Commands, position: &Vec2, image: Handle<Image>) {
                 direction: Vec3::ZERO,
                 magnitude: 0.0,
             },
-            Velocity::new(150.0),
         )
     );
 }
@@ -201,7 +223,7 @@ fn find_flocking_neighbours(
             let neighbour_distance = 400.0;
             if current_transform.translation.distance(other_transform.translation) < neighbour_distance {
                 current_flocking.neighbour_positions.push(other_transform.translation);
-                current_flocking.neighbour_velocities.push(other_velocity.velocity);
+                current_flocking.neighbour_velocities.push(Vec3::from((other_velocity.linvel, 0.0)));
             }
         }
     }
@@ -226,7 +248,6 @@ fn calculate_flocking(
 
 fn calculate_velocity(
     mut query: Query<(
-        &mut Transform,
         &mut Velocity,
         Option<&RunsFromPlayer>,
         Option<&PlayerInput>,
@@ -234,8 +255,7 @@ fn calculate_velocity(
         Option<&YieldsToCollision>,
     )>
 ) {
-    for (mut transform, mut velocity, runner, player, flocker, yields) in query.iter_mut() {
-        let mut transform: &mut Transform = &mut transform;
+    for (mut velocity, runner, player, flocker, yields) in query.iter_mut() {
         let mut velocity: &mut Velocity = &mut velocity;
         let runner: Option<&RunsFromPlayer> = runner;
         let player: Option<&PlayerInput> = player;
@@ -258,8 +278,16 @@ fn calculate_velocity(
             let correction_direction = yields.correction;//.normalize_or_zero();
             influence += correction_direction * 0.9;
         }
-        velocity.velocity = influence * velocity.max_speed;
-        transform.translation += velocity.velocity * TIME_STEP;
+        let influence: Vec2 = Vec2::new(influence.x, influence.y);
+        let max_speed = 200.0;
+        velocity.linvel = influence * max_speed;
     }
 }
 
+fn read_result_system(controllers: Query<(Entity, &KinematicCharacterControllerOutput)>) {
+    for (entity, output) in controllers.iter() {
+        let output: &KinematicCharacterControllerOutput = &output;
+        println!("Entity {:?} moved by {:?} and touches the ground: {:?}",
+                 entity, output.effective_translation, output.grounded);
+    }
+}
