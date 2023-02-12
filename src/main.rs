@@ -18,12 +18,13 @@ fn main() {
         .add_system_set(
             SystemSet::new()
                 .with_run_criteria(FixedTimestep::step(TIME_STEP as f64))
-                .with_system(apply_player_input)
-                .with_system(flee_from_players)
+                .with_system(apply_player_input.before(calculate_velocity))
+                .with_system(flee_from_players.before(calculate_velocity))
                 .with_system(calculate_velocity)
-                .with_system(update_colliders)
-                .with_system(perform_collisions)
-                .with_system(find_flocking_neighbours)
+                .with_system(update_colliders.after(calculate_velocity))
+                .with_system(calculate_collisions.after(update_colliders))
+                .with_system(apply_collision_corrections.after(calculate_collisions))
+            // .with_system(find_flocking_neighbours)
         )
         .run();
 }
@@ -47,8 +48,8 @@ fn setup(
         for y_counter in -3..3 {
             let spacing: f32 = 50.0;
             let position = Vec2::new(
-                (x_counter as f32) * &spacing,
-                (y_counter as f32) * &spacing,
+                (x_counter as f32) * spacing,
+                (y_counter as f32) * spacing,
             );
             spawn_sheep(&mut commands, &position, sheep_texture.clone());
         }
@@ -77,7 +78,7 @@ struct Flocking {
 
 #[derive(Component)]
 struct YieldsToCollision {
-    direction: Vec3,
+    correction: Vec3,
 }
 
 #[derive(Component)]
@@ -133,7 +134,7 @@ fn spawn_sheep(commands: &mut Commands, position: &Vec2, image: Handle<Image>) {
                 cohesion: Vec3::ZERO,
             },
             YieldsToCollision {
-                direction: Vec3::ZERO,
+                correction: Vec3::ZERO,
             },
             RunsFromPlayer {
                 direction: Vec3::ZERO,
@@ -142,7 +143,7 @@ fn spawn_sheep(commands: &mut Commands, position: &Vec2, image: Handle<Image>) {
             Sepax {
                 convex: Convex::Circle(
                     Circle {
-                        position: (0.0, 0.0),
+                        position: (position.x, position.y),
                         radius: 40.0,
                     }
                 ),
@@ -183,24 +184,20 @@ fn apply_player_input(
 }
 
 fn flee_from_players(
-    player_query: Query<(&Transform, With<PlayerInput>)>,
-    mut runner_query: Query<((&mut RunsFromPlayer, &Transform), Without<PlayerInput>)>,
+    player_query: Query<&Transform, With<PlayerInput>>,
+    mut runner_query: Query<(&mut RunsFromPlayer, &Transform), Without<PlayerInput>>,
 ) {
-    let (Transform { translation: player_position, .. }, ()) = player_query.single();
-    for (
-        (
-            mut runner,
-            &Transform { translation: sheep_position, .. }
-        ),
-        ()
-    ) in runner_query.iter_mut() {
+    let Transform { translation: player_position, .. } = player_query.single();
+    for (mut runner, Transform { translation: runner_position, .. }) in runner_query.iter_mut() {
+        let mut runner: &mut RunsFromPlayer = &mut runner;
+
         let scare_distance = 200.0;
-        if sheep_position.distance(*player_position) < scare_distance {
-            runner.direction = (sheep_position - *player_position).normalize_or_zero();
+        if runner_position.distance(*player_position) < scare_distance {
+            // runner.direction = (*runner_position - *player_position).normalize_or_zero();
+            runner.direction = (*player_position - *runner_position).normalize_or_zero();
             runner.magnitude = 1.0;
         } else {
             runner.magnitude -= 1.0 * TIME_STEP;
-            println!("{}", runner.magnitude);
         }
     }
 }
@@ -262,7 +259,7 @@ fn calculate_velocity(
         }
         if let Some(runner) = runner {
             let direction = runner.direction.normalize_or_zero();
-            influence =  direction * f32::max(runner.magnitude, 0.0);
+            influence = direction * f32::max(runner.magnitude, 0.0);
         }
         if let Some(flocker) = flocker {}
         let influence_length = influence.length();
@@ -285,28 +282,48 @@ pub fn update_colliders(mut query: Query<(&Transform, &mut Sepax)>)
     }
 }
 
-pub fn perform_collisions(mut _query: Query<(&mut Sepax, &mut Transform), Without<NoCollision>>)
+fn calculate_collisions(
+    mut query: Query<(Entity, &Sepax, &mut YieldsToCollision), Without<NoCollision>>,
+    movables: Query<(Entity, &Sepax), (With<YieldsToCollision>, Without<NoCollision>)>,
+    immovables: Query<&Sepax, (Without<YieldsToCollision>, Without<NoCollision>)>,
+)
 {
-    // for (mut sepax, mut transform) in movable.iter_mut()
-    // {
-    //     for wall in walls.iter()
-    //     {
-    //         let shape = sepax.shape_mut();
-    //         let correction = sat_collision(wall.shape(), shape);
-    //
-    //         let old_position = shape.position();
-    //         let new_position = (old_position.0 + correction.0, old_position.1 + correction.1);
-    //
-    //         shape.set_position(new_position);
-    //         transform.translation.x = new_position.0;
-    //         transform.translation.y = new_position.1;
-    //
-    //         let length = f32::sqrt((correction.0 * correction.0) + (correction.1 * correction.1));
-    //
-    //         if length > f32::EPSILON
-    //         {
-    //             // correct.axes.push((correction.0 / length, correction.1 / length));
-    //         }
-    //     }
-    // }
+    let mut items: Vec<Entity> = Vec::new();
+    let mut others: Vec<Entity> = Vec::new();
+    for (entity, sepax, mut yields) in query.iter_mut() {
+        items.push(entity);
+        let sepax: &Sepax = sepax;
+        let mut yields: &mut YieldsToCollision = &mut yields;
+        others.clear();
+        yields.correction = Vec3::ZERO;
+        for (other_entity, other_sepax) in movables.iter() {
+            others.push(other_entity);
+            let other_sepax: &Sepax = other_sepax;
+            if entity != other_entity {
+                let correction = sat_collision(other_sepax.shape(), sepax.shape());
+                // We divide collisions with other things that yield by 2.
+                // This is since the other side will also adjust to us, meaning we'd otherwise
+                // overcorrect
+                yields.correction += Vec3::new(correction.0, correction.1, 0.0) / 2.0;
+            }
+        }
+        for other_sepax in immovables.iter() {
+            let correction = sat_collision(other_sepax.shape(), sepax.shape());
+            yields.correction += Vec3::new(correction.0, correction.1, 0.0);
+        }
+    }
+    // println!("items: {}", items.len());
+    // println!("others: {}", others.len());
+    // println!("{:#?}", items);
+    // println!("{:#?}", others);
+}
+
+fn apply_collision_corrections(
+    mut query: Query<(&mut Transform, &YieldsToCollision), Without<NoCollision>>,
+) {
+    for (mut transform, yields) in query.iter_mut() {
+        let mut transform: &mut Transform = &mut transform;
+        let yields: &YieldsToCollision = &yields;
+        transform.translation += yields.correction;
+    }
 }
