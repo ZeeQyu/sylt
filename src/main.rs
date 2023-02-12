@@ -1,3 +1,4 @@
+use std::cmp::max;
 use bevy::{
     prelude::*,
     time::FixedTimestep,
@@ -195,13 +196,15 @@ fn flee_from_players(
     ) in runner_query.iter_mut() {
         let scare_distance = 200.0;
         if sheep_position.distance(*player_position) < scare_distance {
-            runner.direction = (*player_position - sheep_position).normalize_or_zero();
+            runner.direction = (sheep_position - *player_position).normalize_or_zero();
             runner.magnitude = 1.0;
         } else {
-            runner.magnitude -= 1.0 / TIME_STEP;
+            runner.magnitude -= 1.0 * TIME_STEP;
+            println!("{}", runner.magnitude);
         }
     }
 }
+
 /// Uses the velocity of last frame to find neighbour velocities for flocking behaviour
 fn find_flocking_neighbours(
     mut query: Query<(&Transform, &mut Flocking), With<Velocity>>,
@@ -248,17 +251,24 @@ fn calculate_velocity(
     )>
 ) {
     for (mut transform, mut velocity, runner, player, flocker) in query.iter_mut() {
+        let mut transform: &mut Transform = &mut transform;
+        let mut velocity: &mut Velocity = &mut velocity;
+        let runner: Option<&RunsFromPlayer> = runner;
+        let player: Option<&PlayerInput> = player;
+        let flocker: Option<&Flocking> = flocker;
         let mut influence = Vec3::ZERO;
         if let Some(player) = player {
             influence = player.direction;
         }
         if let Some(runner) = runner {
-            influence = runner.direction;
+            let direction = runner.direction.normalize_or_zero();
+            influence =  direction * f32::max(runner.magnitude, 0.0);
         }
-        if let Some(flocker) = flocker {
-
+        if let Some(flocker) = flocker {}
+        let influence_length = influence.length();
+        if influence_length > 1.0 {
+            influence /= influence_length;
         }
-        influence = influence.normalize_or_zero();
         velocity.velocity = influence * velocity.max_speed;
         transform.translation += velocity.velocity * TIME_STEP;
     }
