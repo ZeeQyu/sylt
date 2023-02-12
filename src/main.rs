@@ -3,8 +3,6 @@ use bevy::{
     prelude::*,
     time::FixedTimestep,
 };
-use sepax2d::prelude::*;
-use bevy_sepax2d::prelude::*;
 
 const TIME_STEP: f32 = 1.0 / 60.0;
 
@@ -12,7 +10,6 @@ fn main() {
     let background_color = Color::rgb_u8(46 as u8, 34 as u8, 47 as u8);
     App::new()
         .add_plugins(DefaultPlugins.set(ImagePlugin::default_nearest()))
-        .add_plugin(SepaxPlugin)
         .insert_resource(ClearColor(background_color))
         .add_startup_system(setup)
         .add_system_set(
@@ -20,9 +17,6 @@ fn main() {
                 .with_run_criteria(FixedTimestep::step(TIME_STEP as f64))
                 .with_system(apply_player_input.before(calculate_velocity))
                 .with_system(flee_from_players.before(calculate_velocity))
-                .with_system(update_colliders.before(calculate_collisions))
-                .with_system(calculate_collisions.before(calculate_velocity))
-                // .with_system(apply_collision_corrections.before(calculate_velocity))
                 .with_system(calculate_velocity)
             // .with_system(find_flocking_neighbours)
         )
@@ -139,14 +133,6 @@ fn spawn_sheep(commands: &mut Commands, position: &Vec2, image: Handle<Image>) {
             RunsFromPlayer {
                 direction: Vec3::ZERO,
                 magnitude: 0.0,
-            },
-            Sepax {
-                convex: Convex::Circle(
-                    Circle {
-                        position: (position.x, position.y),
-                        radius: 40.0,
-                    }
-                ),
             },
             Velocity::new(150.0),
         )
@@ -277,59 +263,3 @@ fn calculate_velocity(
     }
 }
 
-pub fn update_colliders(mut query: Query<(&Transform, &mut Sepax)>)
-{
-    for (transform, mut sepax) in query.iter_mut()
-    {
-        let position = (transform.translation.x, transform.translation.y);
-
-        let shape = sepax.shape_mut();
-        shape.set_position(position);
-    }
-}
-
-fn calculate_collisions(
-    mut query: Query<(Entity, &Sepax, &mut YieldsToCollision), Without<NoCollision>>,
-    movables: Query<(Entity, &Sepax), (With<YieldsToCollision>, Without<NoCollision>)>,
-    immovables: Query<&Sepax, (Without<YieldsToCollision>, Without<NoCollision>)>,
-)
-{
-    let mut items: Vec<Entity> = Vec::new();
-    let mut others: Vec<Entity> = Vec::new();
-    for (entity, sepax, mut yields) in query.iter_mut() {
-        items.push(entity);
-        let sepax: &Sepax = sepax;
-        let mut yields: &mut YieldsToCollision = &mut yields;
-        others.clear();
-        yields.correction = Vec3::ZERO;
-        for (other_entity, other_sepax) in movables.iter() {
-            others.push(other_entity);
-            let other_sepax: &Sepax = other_sepax;
-            if entity != other_entity {
-                let correction = sat_collision(other_sepax.shape(), sepax.shape());
-                // We divide collisions with other things that yield by 2.
-                // This is since the other side will also adjust to us, meaning we'd otherwise
-                // overcorrect
-                yields.correction += Vec3::new(correction.0, correction.1, 0.0) / 2.0;
-            }
-        }
-        for other_sepax in immovables.iter() {
-            let correction = sat_collision(other_sepax.shape(), sepax.shape());
-            yields.correction += Vec3::new(correction.0, correction.1, 0.0);
-        }
-    }
-    // println!("items: {}", items.len());
-    // println!("others: {}", others.len());
-    // println!("{:#?}", items);
-    // println!("{:#?}", others);
-}
-
-fn apply_collision_corrections(
-    mut query: Query<(&mut Transform, &YieldsToCollision), Without<NoCollision>>,
-) {
-    for (mut transform, yields) in query.iter_mut() {
-        let mut transform: &mut Transform = &mut transform;
-        let yields: &YieldsToCollision = &yields;
-        transform.translation += yields.correction;
-    }
-}
