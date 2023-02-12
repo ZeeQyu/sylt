@@ -2,6 +2,8 @@ use bevy::{
     prelude::*,
     time::FixedTimestep,
 };
+use sepax2d::prelude::*;
+use bevy_sepax2d::prelude::*;
 
 const TIME_STEP: f32 = 1.0 / 60.0;
 
@@ -9,14 +11,18 @@ fn main() {
     let background_color = Color::rgb_u8(46 as u8, 34 as u8, 47 as u8);
     App::new()
         .add_plugins(DefaultPlugins.set(ImagePlugin::default_nearest()))
+        .add_plugin(SepaxPlugin)
         .insert_resource(ClearColor(background_color))
         .add_startup_system(setup)
         .add_system_set(
             SystemSet::new()
                 .with_run_criteria(FixedTimestep::step(TIME_STEP as f64))
-                .with_system(apply_velocity)
                 .with_system(apply_player_input)
-                .with_system(move_sheep)
+                .with_system(flee_from_players)
+                .with_system(calculate_velocity)
+                .with_system(update_colliders)
+                .with_system(perform_collisions)
+                .with_system(find_flocking_neighbours)
         )
         .run();
 }
@@ -48,29 +54,48 @@ fn setup(
     }
 }
 
+#[derive(Component)]
+struct PlayerInput {
+    direction: Vec3,
+}
 
 #[derive(Component)]
-struct Collider;
+struct RunsFromPlayer {
+    direction: Vec3,
+    magnitude: f32,
+}
+
+#[derive(Component)]
+struct Flocking {
+    neighbour_positions: Vec<Vec3>,
+    neighbour_velocities: Vec<Vec3>,
+    alignment: Vec3,
+    separation: Vec3,
+    cohesion: Vec3,
+}
+
+#[derive(Component)]
+struct YieldsToCollision {
+    direction: Vec3,
+}
 
 #[derive(Component)]
 struct Velocity {
+    max_speed: f32,
     velocity: Vec3,
 }
+
 impl Velocity {
-    fn new() -> Self {
+    fn new(max_speed: f32) -> Self {
         Self {
-            velocity: Vec3::ZERO
+            max_speed,
+            velocity: Vec3::ZERO,
         }
     }
 }
 
-#[derive(Component)]
-struct Player;
-
-#[derive(Component)]
-struct Sheep;
-
 fn spawn_player(commands: &mut Commands, player_texture: Handle<Image>) {
+    let player_speed: f32 = 200.0;
     commands.spawn((
         SpriteBundle {
             transform: Transform {
@@ -81,8 +106,8 @@ fn spawn_player(commands: &mut Commands, player_texture: Handle<Image>) {
             texture: player_texture,
             ..default()
         },
-        Player,
-        Velocity::new()
+        PlayerInput { direction: Vec3::ZERO },
+        Velocity::new(player_speed),
     ));
 }
 
@@ -99,16 +124,36 @@ fn spawn_sheep(commands: &mut Commands, position: &Vec2, image: Handle<Image>) {
                 texture: image,
                 ..default()
             },
-            Collider,
-            Sheep,
-            Velocity::new(),
+            Flocking {
+                neighbour_positions: Vec::new(),
+                neighbour_velocities: Vec::new(),
+                alignment: Vec3::ZERO,
+                separation: Vec3::ZERO,
+                cohesion: Vec3::ZERO,
+            },
+            YieldsToCollision {
+                direction: Vec3::ZERO,
+            },
+            RunsFromPlayer {
+                direction: Vec3::ZERO,
+                magnitude: 0.0,
+            },
+            Sepax {
+                convex: Convex::Circle(
+                    Circle {
+                        position: (0.0, 0.0),
+                        radius: 40.0,
+                    }
+                ),
+            },
+            Velocity::new(150.0),
         )
     );
 }
 
 fn apply_player_input(
     keyboard_input: Res<Input<KeyCode>>,
-    mut query: Query<&mut Velocity, With<Player>>,
+    mut query: Query<&mut PlayerInput>,
 ) {
     let mut direction = Vec2::new(0.0, 0.0);
     if keyboard_input.pressed(KeyCode::Left) ||
@@ -127,40 +172,131 @@ fn apply_player_input(
         keyboard_input.pressed(KeyCode::S) {
         direction.y -= 1.0;
     }
-    let player_speed: f32 = 200.0;
-    let mut player_velocity = query.single_mut();
     direction = direction.normalize_or_zero();
-    player_velocity.velocity = Vec3::new(
-        direction.x * player_speed,
-        direction.y * player_speed,
+    let mut player_input = query.single_mut();
+    player_input.direction = Vec3::new(
+        direction.x,
+        direction.y,
         0.0,
     );
 }
 
-fn move_sheep(
-    mut player_query: Query<(&Transform, With<Player>)>,
-    mut sheep_query: Query<((&mut Velocity, &Transform), With<Sheep>)>,
+fn flee_from_players(
+    player_query: Query<(&Transform, With<PlayerInput>)>,
+    mut runner_query: Query<((&mut RunsFromPlayer, &Transform), Without<PlayerInput>)>,
 ) {
     let (Transform { translation: player_position, .. }, ()) = player_query.single();
     for (
         (
-            mut velocity,
+            mut runner,
             &Transform { translation: sheep_position, .. }
         ),
         ()
-    ) in sheep_query.iter_mut() {
+    ) in runner_query.iter_mut() {
         let scare_distance = 200.0;
-        let sheep_speed = 120.0;
         if sheep_position.distance(*player_position) < scare_distance {
-            velocity.velocity = (*player_position - sheep_position).normalize_or_zero() * sheep_speed;
+            runner.direction = (*player_position - sheep_position).normalize_or_zero();
+            runner.magnitude = 1.0;
+        } else {
+            runner.magnitude -= 1.0 / TIME_STEP;
+        }
+    }
+}
+/// Uses the velocity of last frame to find neighbour velocities for flocking behaviour
+fn find_flocking_neighbours(
+    mut query: Query<(&Transform, &mut Flocking), With<Velocity>>,
+    other_query: Query<(&Transform, &Velocity), With<Flocking>>,
+) {
+    for (current_transform, mut current_flocking) in query.iter_mut() {
+        let current_transform: &Transform = current_transform;
+        current_flocking.neighbour_positions.clear();
+        current_flocking.neighbour_velocities.clear();
+        for (other_transform, other_velocity) in other_query.iter() {
+            let neighbour_distance = 400.0;
+            if current_transform.translation.distance(other_transform.translation) < neighbour_distance {
+                current_flocking.neighbour_positions.push(other_transform.translation);
+                current_flocking.neighbour_velocities.push(other_velocity.velocity);
+            }
         }
     }
 }
 
-fn apply_velocity(
-    mut query: Query<(&mut Transform, &Velocity)>
+fn calculate_flocking(
+    mut query: Query<(&mut Flocking), With<Velocity>>,
 ) {
-    for (mut transform, Velocity { velocity }) in query.iter_mut() {
-        transform.translation += *velocity * TIME_STEP;
+    for (mut flocking) in query.iter_mut() {
+        let mut flocking: &mut Flocking = &mut flocking;
+        flocking.alignment = Vec3::ZERO;
+        flocking.cohesion = Vec3::ZERO;
+        flocking.separation = Vec3::ZERO;
+        for velocity in flocking.neighbour_velocities.iter() {
+            flocking.alignment += velocity.normalize_or_zero();
+        }
+        for position in flocking.neighbour_positions.iter() {
+            // flocking.cohesion +=
+        }
     }
+}
+
+fn calculate_velocity(
+    mut query: Query<(
+        &mut Transform,
+        &mut Velocity,
+        Option<&RunsFromPlayer>,
+        Option<&PlayerInput>,
+        Option<&Flocking>
+    )>
+) {
+    for (mut transform, mut velocity, runner, player, flocker) in query.iter_mut() {
+        let mut influence = Vec3::ZERO;
+        if let Some(player) = player {
+            influence = player.direction;
+        }
+        if let Some(runner) = runner {
+            influence = runner.direction;
+        }
+        if let Some(flocker) = flocker {
+
+        }
+        influence = influence.normalize_or_zero();
+        velocity.velocity = influence * velocity.max_speed;
+        transform.translation += velocity.velocity * TIME_STEP;
+    }
+}
+
+pub fn update_colliders(mut query: Query<(&Transform, &mut Sepax)>)
+{
+    for (transform, mut sepax) in query.iter_mut()
+    {
+        let position = (transform.translation.x, transform.translation.y);
+
+        let shape = sepax.shape_mut();
+        shape.set_position(position);
+    }
+}
+
+pub fn perform_collisions(mut _query: Query<(&mut Sepax, &mut Transform), Without<NoCollision>>)
+{
+    // for (mut sepax, mut transform) in movable.iter_mut()
+    // {
+    //     for wall in walls.iter()
+    //     {
+    //         let shape = sepax.shape_mut();
+    //         let correction = sat_collision(wall.shape(), shape);
+    //
+    //         let old_position = shape.position();
+    //         let new_position = (old_position.0 + correction.0, old_position.1 + correction.1);
+    //
+    //         shape.set_position(new_position);
+    //         transform.translation.x = new_position.0;
+    //         transform.translation.y = new_position.1;
+    //
+    //         let length = f32::sqrt((correction.0 * correction.0) + (correction.1 * correction.1));
+    //
+    //         if length > f32::EPSILON
+    //         {
+    //             // correct.axes.push((correction.0 / length, correction.1 / length));
+    //         }
+    //     }
+    // }
 }
