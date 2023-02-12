@@ -20,10 +20,10 @@ fn main() {
                 .with_run_criteria(FixedTimestep::step(TIME_STEP as f64))
                 .with_system(apply_player_input.before(calculate_velocity))
                 .with_system(flee_from_players.before(calculate_velocity))
+                .with_system(update_colliders.before(calculate_collisions))
+                .with_system(calculate_collisions.before(calculate_velocity))
+                // .with_system(apply_collision_corrections.before(calculate_velocity))
                 .with_system(calculate_velocity)
-                .with_system(update_colliders.after(calculate_velocity))
-                .with_system(calculate_collisions.after(update_colliders))
-                .with_system(apply_collision_corrections.after(calculate_collisions))
             // .with_system(find_flocking_neighbours)
         )
         .run();
@@ -244,15 +244,17 @@ fn calculate_velocity(
         &mut Velocity,
         Option<&RunsFromPlayer>,
         Option<&PlayerInput>,
-        Option<&Flocking>
+        Option<&Flocking>,
+        Option<&YieldsToCollision>,
     )>
 ) {
-    for (mut transform, mut velocity, runner, player, flocker) in query.iter_mut() {
+    for (mut transform, mut velocity, runner, player, flocker, yields) in query.iter_mut() {
         let mut transform: &mut Transform = &mut transform;
         let mut velocity: &mut Velocity = &mut velocity;
         let runner: Option<&RunsFromPlayer> = runner;
         let player: Option<&PlayerInput> = player;
         let flocker: Option<&Flocking> = flocker;
+        let yields: Option<&YieldsToCollision> = yields;
         let mut influence = Vec3::ZERO;
         if let Some(player) = player {
             influence = player.direction;
@@ -265,6 +267,10 @@ fn calculate_velocity(
         let influence_length = influence.length();
         if influence_length > 1.0 {
             influence /= influence_length;
+        }
+        if let Some(yields) = yields {
+            let correction_direction = yields.correction;//.normalize_or_zero();
+            influence += correction_direction * 0.9;
         }
         velocity.velocity = influence * velocity.max_speed;
         transform.translation += velocity.velocity * TIME_STEP;
