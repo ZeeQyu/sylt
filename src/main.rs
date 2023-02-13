@@ -11,7 +11,7 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(ImagePlugin::default_nearest()))
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(30.0))
-        .add_plugin(RapierDebugRenderPlugin::default())
+        // .add_plugin(RapierDebugRenderPlugin::default())
         .insert_resource(ClearColor(background_color))
         .insert_resource(RapierConfiguration { gravity: Vec2::ZERO, ..default() })
         .add_startup_system(setup)
@@ -19,7 +19,7 @@ fn main() {
             SystemSet::new()
                 .with_run_criteria(FixedTimestep::step(TIME_STEP as f64))
                 .with_system(apply_player_input.before(calculate_velocity))
-                .with_system(flee_from_players.before(calculate_velocity))
+                .with_system(flee_from_player.before(calculate_velocity))
                 .with_system(calculate_velocity)
             // .with_system(find_flocking_neighbours)
         )
@@ -73,26 +73,6 @@ struct Flocking {
     cohesion: Vec3,
 }
 
-#[derive(Component)]
-struct YieldsToCollision {
-    correction: Vec3,
-}
-//
-// #[derive(Component)]
-// struct Velocity {
-//     max_speed: f32,
-//     velocity: Vec3,
-// }
-
-// impl Velocity {
-//     fn new(max_speed: f32) -> Self {
-//         Self {
-//             max_speed,
-//             velocity: Vec3::ZERO,
-//         }
-//     }
-// }
-
 fn spawn_player(commands: &mut Commands, player_texture: Handle<Image>) {
     let player_speed: f32 = 200.0;
     commands.spawn((
@@ -109,8 +89,10 @@ fn spawn_player(commands: &mut Commands, player_texture: Handle<Image>) {
             ..default()
         },
         PlayerInput { direction: Vec3::ZERO },
-        Collider::ball(10.0),
+        Collider::ball(15.0),
+        Dominance::group(10),
         RigidBody::Dynamic,
+        LockedAxes::ROTATION_LOCKED,
         Velocity::default(),
     ));
 }
@@ -140,8 +122,9 @@ fn spawn_sheep(commands: &mut Commands, position: &Vec2, image: Handle<Image>) {
                 },
                 ..default()
             },
-            Collider::ball(10.0),
+            Collider::ball(13.0),
             RigidBody::Dynamic,
+            LockedAxes::ROTATION_LOCKED,
             Velocity::default(),
             Flocking {
                 neighbour_positions: Vec::new(),
@@ -149,9 +132,6 @@ fn spawn_sheep(commands: &mut Commands, position: &Vec2, image: Handle<Image>) {
                 alignment: Vec3::ZERO,
                 separation: Vec3::ZERO,
                 cohesion: Vec3::ZERO,
-            },
-            YieldsToCollision {
-                correction: Vec3::ZERO,
             },
             RunsFromPlayer {
                 direction: Vec3::ZERO,
@@ -191,7 +171,7 @@ fn apply_player_input(
     );
 }
 
-fn flee_from_players(
+fn flee_from_player(
     player_query: Query<&Transform, With<PlayerInput>>,
     mut runner_query: Query<(&mut RunsFromPlayer, &Transform), Without<PlayerInput>>,
 ) {
@@ -201,8 +181,8 @@ fn flee_from_players(
 
         let scare_distance = 200.0;
         if runner_position.distance(*player_position) < scare_distance {
-            // runner.direction = (*runner_position - *player_position).normalize_or_zero();
-            runner.direction = (*player_position - *runner_position).normalize_or_zero();
+            runner.direction = (*runner_position - *player_position).normalize_or_zero();
+            // runner.direction = (*player_position - *runner_position).normalize_or_zero();
             runner.magnitude = 1.0;
         } else {
             runner.magnitude -= 1.0 * TIME_STEP;
@@ -252,15 +232,13 @@ fn calculate_velocity(
         Option<&RunsFromPlayer>,
         Option<&PlayerInput>,
         Option<&Flocking>,
-        Option<&YieldsToCollision>,
     )>
 ) {
-    for (mut velocity, runner, player, flocker, yields) in query.iter_mut() {
+    for (mut velocity, runner, player, flocker) in query.iter_mut() {
         let mut velocity: &mut Velocity = &mut velocity;
         let runner: Option<&RunsFromPlayer> = runner;
         let player: Option<&PlayerInput> = player;
         let flocker: Option<&Flocking> = flocker;
-        let yields: Option<&YieldsToCollision> = yields;
         let mut influence = Vec3::ZERO;
         if let Some(player) = player {
             influence = player.direction;
@@ -273,10 +251,6 @@ fn calculate_velocity(
         let influence_length = influence.length();
         if influence_length > 1.0 {
             influence /= influence_length;
-        }
-        if let Some(yields) = yields {
-            let correction_direction = yields.correction;//.normalize_or_zero();
-            influence += correction_direction * 0.9;
         }
         let influence: Vec2 = Vec2::new(influence.x, influence.y);
         let max_speed = 200.0;
