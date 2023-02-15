@@ -3,6 +3,106 @@ use bevy::{
     time::FixedTimestep,
 };
 use bevy_rapier2d::prelude::*;
+use bevy_inspector_egui::prelude::*;
+use bevy_inspector_egui::quick::{ResourceInspectorPlugin, WorldInspectorPlugin};
+
+#[derive(Component)]
+struct PlayerInput {
+    direction: Vec3,
+}
+
+#[derive(Component)]
+struct RunsFromPlayer {
+    direction: Vec3,
+    magnitude: f32,
+}
+
+#[derive(Component)]
+struct Flocking {
+    neighbour_positions: Vec<Vec3>,
+    neighbour_velocities: Vec<Vec3>,
+    alignment_direction: Option<Vec3>,
+    separation_vector: Option<Vec3>,
+    cohesion_correction: Option<Vec3>,
+}
+
+#[derive(Component)]
+enum ConfigurationSetId {
+    Player,
+    Sheep,
+}
+
+#[derive(Reflect, Default, InspectorOptions)]
+#[reflect(InspectorOptions)]
+struct ConfigurationSet {
+    #[inspector(min = 0.0)]
+    max_speed: f32,
+}
+
+#[derive(Reflect, Default, InspectorOptions)]
+#[reflect(InspectorOptions)]
+struct FlockingConfiguration {
+    neighbour_distance: f32,
+    #[inspector(min = 0.0)]
+    alignment_weight: f32,
+    #[inspector(min = 0.0)]
+    cohesion_weight: f32,
+    #[inspector(min = 0.0)]
+    separation_weight: f32,
+}
+
+#[derive(Reflect, Default, InspectorOptions)]
+#[reflect(InspectorOptions)]
+struct RunnerConfiguration {
+    #[inspector(min = 0.0)]
+    weight: f32,
+    #[inspector(min = 0.0)]
+    added_speed: f32,
+    #[inspector(min = 0.0)]
+    scare_distance: f32,
+}
+
+#[derive(Reflect, Default, Resource, InspectorOptions)]
+#[reflect(Resource, InspectorOptions)]
+struct Configuration {
+    player: ConfigurationSet,
+    sheep: ConfigurationSet,
+    flocking: FlockingConfiguration,
+    runner: RunnerConfiguration,
+}
+impl Configuration {
+    fn new() -> Self {
+        Self {
+            player: ConfigurationSet {
+                max_speed: 200.0,
+            },
+            sheep: ConfigurationSet {
+                max_speed: 150.0,
+            },
+            flocking: FlockingConfiguration {
+                neighbour_distance: 200.0,
+                alignment_weight: 1.0,
+                cohesion_weight: 1.0,
+                separation_weight: 1.0,
+            },
+            runner: RunnerConfiguration {
+                weight: 0.0,
+                added_speed: 100.0,
+                scare_distance: 100.0,
+            },
+        }
+    }
+    fn get_set<'a>(self: &'a Self, id: &ConfigurationSetId) -> &'a ConfigurationSet {
+        match id {
+            ConfigurationSetId::Player => {
+                &self.player
+            }
+            ConfigurationSetId::Sheep => {
+                &self.sheep
+            }
+        }
+    }
+}
 
 const TIME_STEP: f32 = 1.0 / 60.0;
 
@@ -12,6 +112,12 @@ fn main() {
         .add_plugins(DefaultPlugins.set(ImagePlugin::default_nearest()))
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(30.0))
         // .add_plugin(RapierDebugRenderPlugin::default())
+        .add_plugin(WorldInspectorPlugin)
+
+        .register_type::<Configuration>()
+        .insert_resource::<Configuration>(Configuration::new())
+        .add_plugin(ResourceInspectorPlugin::<Configuration>::default())
+
         .insert_resource(ClearColor(background_color))
         .insert_resource(RapierConfiguration { gravity: Vec2::ZERO, ..default() })
         .add_startup_system(setup)
@@ -20,6 +126,8 @@ fn main() {
                 .with_run_criteria(FixedTimestep::step(TIME_STEP as f64))
                 .with_system(apply_player_input.before(calculate_velocity))
                 .with_system(flee_from_player.before(calculate_velocity))
+                .with_system(find_flocking_neighbours.before(calculate_flocking))
+                .with_system(calculate_flocking.before(calculate_velocity))
                 .with_system(calculate_velocity)
             // .with_system(find_flocking_neighbours)
         )
@@ -45,36 +153,18 @@ fn setup(
         for y_counter in -3..3 {
             let spacing: f32 = 50.0;
             let position = Vec2::new(
-                (x_counter as f32) * spacing,
-                (y_counter as f32) * spacing,
+                (x_counter as f32) * spacing + 25.0,
+                (y_counter as f32) * spacing + 25.0,
             );
             spawn_sheep(&mut commands, &position, sheep_texture.clone());
         }
     }
 }
 
-#[derive(Component)]
-struct PlayerInput {
-    direction: Vec3,
-}
-
-#[derive(Component)]
-struct RunsFromPlayer {
-    direction: Vec3,
-    magnitude: f32,
-}
-
-#[derive(Component)]
-struct Flocking {
-    neighbour_positions: Vec<Vec3>,
-    neighbour_velocities: Vec<Vec3>,
-    alignment: Vec3,
-    separation: Vec3,
-    cohesion: Vec3,
-}
-
-fn spawn_player(commands: &mut Commands, player_texture: Handle<Image>) {
-    let player_speed: f32 = 200.0;
+fn spawn_player(
+    commands: &mut Commands,
+    player_texture: Handle<Image>,
+) {
     commands.spawn((
         SpriteBundle {
             transform: Transform {
@@ -94,10 +184,16 @@ fn spawn_player(commands: &mut Commands, player_texture: Handle<Image>) {
         RigidBody::Dynamic,
         LockedAxes::ROTATION_LOCKED,
         Velocity::default(),
+        Name::new("Player"),
+        ConfigurationSetId::Player,
     ));
 }
 
-fn spawn_sheep(commands: &mut Commands, position: &Vec2, image: Handle<Image>) {
+fn spawn_sheep(
+    commands: &mut Commands,
+    position: &Vec2,
+    image: Handle<Image>,
+) {
     // commands
     //     .spawn(Collider::cuboid(500.0, 50.0))
     //     .insert(TransformBundle::from(
@@ -129,14 +225,16 @@ fn spawn_sheep(commands: &mut Commands, position: &Vec2, image: Handle<Image>) {
             Flocking {
                 neighbour_positions: Vec::new(),
                 neighbour_velocities: Vec::new(),
-                alignment: Vec3::ZERO,
-                separation: Vec3::ZERO,
-                cohesion: Vec3::ZERO,
+                alignment_direction: None,
+                cohesion_correction: None,
+                separation_vector: None,
             },
             RunsFromPlayer {
                 direction: Vec3::ZERO,
                 magnitude: 0.0,
             },
+            Name::new("Sheep"),
+            ConfigurationSetId::Sheep,
         )
     );
 }
@@ -174,12 +272,13 @@ fn apply_player_input(
 fn flee_from_player(
     player_query: Query<&Transform, With<PlayerInput>>,
     mut runner_query: Query<(&mut RunsFromPlayer, &Transform), Without<PlayerInput>>,
+    config: Res<Configuration>,
 ) {
     let Transform { translation: player_position, .. } = player_query.single();
     for (mut runner, Transform { translation: runner_position, .. }) in runner_query.iter_mut() {
         let mut runner: &mut RunsFromPlayer = &mut runner;
 
-        let scare_distance = 200.0;
+        let scare_distance = config.runner.scare_distance;
         if runner_position.distance(*player_position) < scare_distance {
             runner.direction = (*runner_position - *player_position).normalize_or_zero();
             // runner.direction = (*player_position - *runner_position).normalize_or_zero();
@@ -194,14 +293,14 @@ fn flee_from_player(
 fn find_flocking_neighbours(
     mut query: Query<(&Transform, &mut Flocking), With<Velocity>>,
     other_query: Query<(&Transform, &Velocity), With<Flocking>>,
+    config: Res<Configuration>,
 ) {
     for (current_transform, mut current_flocking) in query.iter_mut() {
         let current_transform: &Transform = current_transform;
         current_flocking.neighbour_positions.clear();
         current_flocking.neighbour_velocities.clear();
         for (other_transform, other_velocity) in other_query.iter() {
-            let neighbour_distance = 400.0;
-            if current_transform.translation.distance(other_transform.translation) < neighbour_distance {
+            if current_transform.translation.distance(other_transform.translation) < config.flocking.neighbour_distance {
                 current_flocking.neighbour_positions.push(other_transform.translation);
                 current_flocking.neighbour_velocities.push(Vec3::from((other_velocity.linvel, 0.0)));
             }
@@ -210,18 +309,39 @@ fn find_flocking_neighbours(
 }
 
 fn calculate_flocking(
-    mut query: Query<(&mut Flocking), With<Velocity>>,
+    mut query: Query<(&mut Flocking, &Transform), With<Velocity>>,
 ) {
-    for (mut flocking) in query.iter_mut() {
-        let mut flocking: &mut Flocking = &mut flocking;
-        flocking.alignment = Vec3::ZERO;
-        flocking.cohesion = Vec3::ZERO;
-        flocking.separation = Vec3::ZERO;
-        for velocity in flocking.neighbour_velocities.iter() {
-            flocking.alignment += velocity.normalize_or_zero();
-        }
-        for position in flocking.neighbour_positions.iter() {
-            // flocking.cohesion +=
+    for (mut flocking, transform) in query.iter_mut() {
+        if flocking.neighbour_velocities.len() > 0 {
+            // Alignment
+            let mut alignment = Vec3::ZERO;
+            for velocity in flocking.neighbour_velocities.iter() {
+                alignment += velocity.normalize_or_zero();
+            }
+            alignment /= flocking.neighbour_velocities.len() as f32;
+            flocking.alignment_direction = Some(alignment);
+
+            // Cohesion
+            let mut cohesion_center = Vec3::ZERO;
+            for position in flocking.neighbour_positions.iter() {
+                cohesion_center += *position;
+            }
+            cohesion_center /= flocking.neighbour_positions.len() as f32;
+            let correction_to_center = cohesion_center - transform.translation;
+            flocking.cohesion_correction = Some(correction_to_center);
+
+            // Separation
+            let mut separation = Vec3::ZERO;
+            for position in flocking.neighbour_positions.iter() {
+                let to_neighbour: Vec3 = *position - transform.translation;
+                let distance_recip = to_neighbour.length_recip();
+                separation += -to_neighbour / distance_recip;
+            }
+            flocking.separation_vector = Some(separation);
+        } else {
+            flocking.alignment_direction = None;
+            flocking.cohesion_correction = None;
+            flocking.separation_vector = None;
         }
     }
 }
@@ -229,39 +349,48 @@ fn calculate_flocking(
 fn calculate_velocity(
     mut query: Query<(
         &mut Velocity,
+        &ConfigurationSetId,
         Option<&RunsFromPlayer>,
         Option<&PlayerInput>,
         Option<&Flocking>,
-    )>
+    )>,
+    config: Res<Configuration>,
 ) {
-    for (mut velocity, runner, player, flocker) in query.iter_mut() {
-        let mut velocity: &mut Velocity = &mut velocity;
-        let runner: Option<&RunsFromPlayer> = runner;
-        let player: Option<&PlayerInput> = player;
-        let flocker: Option<&Flocking> = flocker;
+    for (
+        mut velocity,
+        set_id,
+        runner,
+        player,
+        flocker
+    ) in query.iter_mut() {
+        let set = config.get_set(set_id);
         let mut influence = Vec3::ZERO;
         if let Some(player) = player {
-            influence = player.direction;
+            influence += player.direction;
         }
-        if let Some(runner) = runner {
-            let direction = runner.direction.normalize_or_zero();
-            influence = direction * f32::max(runner.magnitude, 0.0);
+        if let Some(flocker) = flocker {
+            let config = &config.flocking;
+            if let Some(alignment_direction) = flocker.alignment_direction {
+                influence += alignment_direction * config.alignment_weight;
+            }
+            if let Some(correction) = flocker.cohesion_correction {
+                influence += correction * config.cohesion_weight;
+            }
+            if let Some(separation_vector) = flocker.separation_vector {
+                influence += separation_vector * config.separation_weight / 10000.0;
+            }
         }
-        if let Some(flocker) = flocker {}
         let influence_length = influence.length();
         if influence_length > 1.0 {
             influence /= influence_length;
         }
+        let mut runner_influence = Vec3::ZERO;
+        if let Some(runner) = runner {
+            let direction = runner.direction.normalize_or_zero();
+            runner_influence = direction * f32::max(runner.magnitude, 0.0);// * config.runner_weight;
+        }
         let influence: Vec2 = Vec2::new(influence.x, influence.y);
-        let max_speed = 200.0;
-        velocity.linvel = influence * max_speed;
-    }
-}
-
-fn read_result_system(controllers: Query<(Entity, &KinematicCharacterControllerOutput)>) {
-    for (entity, output) in controllers.iter() {
-        let output: &KinematicCharacterControllerOutput = &output;
-        println!("Entity {:?} moved by {:?} and touches the ground: {:?}",
-                 entity, output.effective_translation, output.grounded);
+        let runner_influnce: Vec2 = Vec2::new(runner_influence.x, runner_influence.y);
+        velocity.linvel = influence * set.max_speed + runner_influnce * config.runner.added_speed;
     }
 }
