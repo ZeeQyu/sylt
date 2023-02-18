@@ -1,17 +1,18 @@
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
-use crate::{TIME_STEP};
+use crate::{TIME_STEP, ConfigurationSetId};
 use bevy_prototype_debug_lines::*;
 use bevy_inspector_egui::prelude::*;
-use bevy_inspector_egui::quick::{ResourceInspectorPlugin, WorldInspectorPlugin};
 use bevy::time::FixedTimestep;
 
+#[derive(Default)]
 pub struct MotionPlugin;
 
 impl Plugin for MotionPlugin {
     fn build(&self, app: &mut App) {
         app.add_system_set(
             SystemSet::new()
+                .label("motion")
                 .with_run_criteria(FixedTimestep::step(TIME_STEP as f64))
                 .with_system(reset_influences)
                 .with_system(apply_player_input.before(calculate_velocity).after(reset_influences))
@@ -22,16 +23,14 @@ impl Plugin for MotionPlugin {
                 .with_system(calculate_inertia.before(calculate_velocity).after(reset_influences))
                 .with_system(calculate_velocity)
                 .with_system(draw_debug_lines.after(calculate_velocity))
-        )
-            // .add_plugin(WorldInspectorPlugin)
-            .add_plugin(DebugLinesPlugin::default())
-            .add_plugin(ResourceInspectorPlugin::<Configuration>::default());
+        );
     }
 }
 
 impl Configuration {
     pub fn new() -> Self {
         Self {
+            animation: crate::animation::AnimationConfiguration::new(),
             player: ConfigurationSet {
                 max_speed: 300.0,
             },
@@ -71,7 +70,7 @@ impl Configuration {
             },
         }
     }
-    fn get_set<'a>(self: &'a Self, id: &ConfigurationSetId) -> &'a ConfigurationSet {
+    pub fn get_set<'a>(self: &'a Self, id: &ConfigurationSetId) -> &'a ConfigurationSet {
         match id {
             ConfigurationSetId::Player => {
                 &self.player
@@ -86,6 +85,7 @@ impl Configuration {
 #[derive(Reflect, Default, Resource, InspectorOptions)]
 #[reflect(Resource, InspectorOptions)]
 pub struct Configuration {
+    pub animation: crate::animation::AnimationConfiguration,
     player: ConfigurationSet,
     sheep: ConfigurationSet,
     flocking: FlockingConfiguration,
@@ -157,7 +157,7 @@ pub struct Grazing {
 }
 
 #[derive(Component, Default)]
-pub struct Inertia ();
+pub struct Inertia();
 
 #[derive(Component, Default)]
 pub struct Influences {
@@ -174,17 +174,11 @@ pub struct Influences {
     pub max_influence: Option<Vec3>,
 }
 
-#[derive(Component)]
-pub enum ConfigurationSetId {
-    Player,
-    Sheep,
-}
-
 #[derive(Reflect, Default, InspectorOptions)]
 #[reflect(InspectorOptions)]
 pub struct ConfigurationSet {
     #[inspector(min = 0.0)]
-    max_speed: f32,
+    pub max_speed: f32,
 }
 
 #[derive(Reflect, Default)]
@@ -481,6 +475,7 @@ fn draw_debug_lines(
     configuration: Res<Configuration>,
 ) {
     let debug_lines = &configuration.debug_lines;
+    if !debug_lines.enable { return; }
     let mut color_to_type = Vec::new();
     color_to_type.push((Color::RED, &debug_lines.red, -2.0));
     color_to_type.push((Color::GREEN, &debug_lines.green, 0.0));
