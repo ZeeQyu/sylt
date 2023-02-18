@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 use rand_distr::{Normal, Distribution};
-use crate::motion::{ConfigurationSetId, Flocking, Grazing, Influences, PlayerInput, RunsFromPlayer};
+use crate::motion::{ConfigurationSetId, Flocking, Grazing, Inertia, Influences, PlayerInput, RunsFromPlayer};
 
 pub fn setup(
     mut commands: Commands,
@@ -18,7 +18,7 @@ pub fn setup(
     let player_texture: Handle<Image> = asset_server.load("Collie.png");
     let sheep_texture: Handle<Image> = asset_server.load("Sheep.png");
 
-    let normal = Normal::new(0.0, 100.0).unwrap();
+    let normal = Normal::new(0.0, 150.0).unwrap();
     spawn_player(&mut commands, player_texture);
     for _ in 0..40 {
         let x = normal.sample(&mut rand::thread_rng());
@@ -95,7 +95,7 @@ fn spawn_sheep(
             Flocking::default(),
             Grazing {
                 current_direction: None,
-                time_left: (rand::random::<f32>() * 5.0) + 3.0,
+                time_left: (rand::random::<f32>() * 5.0) + 0.0,
             },
             RunsFromPlayer {
                 direction: Vec3::ZERO,
@@ -103,6 +103,7 @@ fn spawn_sheep(
             },
             Name::new("Sheep"),
             ConfigurationSetId::Sheep,
+            Inertia::default(),
         )
     );
 }

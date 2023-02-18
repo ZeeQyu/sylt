@@ -19,12 +19,114 @@ impl Plugin for MotionPlugin {
                 .with_system(find_flocking_neighbours.before(calculate_flocking))
                 .with_system(calculate_flocking.before(calculate_velocity).after(reset_influences))
                 .with_system(calculate_grazing.before(calculate_velocity).after(reset_influences))
+                .with_system(calculate_inertia.before(calculate_velocity).after(reset_influences))
                 .with_system(calculate_velocity)
                 .with_system(draw_debug_lines.after(calculate_velocity))
-        ).add_plugin(WorldInspectorPlugin)
+        )
+            // .add_plugin(WorldInspectorPlugin)
             .add_plugin(DebugLinesPlugin::default())
             .add_plugin(ResourceInspectorPlugin::<Configuration>::default());
     }
+}
+
+impl Configuration {
+    pub fn new() -> Self {
+        Self {
+            player: ConfigurationSet {
+                max_speed: 300.0,
+            },
+            sheep: ConfigurationSet {
+                max_speed: 100.0,
+            },
+            flocking: FlockingConfiguration {
+                alignment_enabled: true,
+                alignment_distance: 60.0,
+                alignment_scale: 100.0,
+                alignment_distance_cap_fraction: 0.6,
+                cohesion_enabled: true,
+                cohesion_velocity_scale: true,
+                cohesion_distance: 300.0,
+                cohesion_scale: 1.5,
+                separation_enabled: true,
+                separation_distance: 30.0,
+                separation_scale: 30.0,
+            },
+            runner: RunnerConfiguration {
+                scale: 10.0,
+                speed_fraction: 1.4,
+                scare_distance: 160.0,
+            },
+            grazing_scale: 1.0,
+            inertia_scale: 10.0,
+            debug_lines: DebugLineConfiguration {
+                enable: false,
+                // red: DebugLineType::None,
+                // green: DebugLineType::None,
+                // blue: DebugLineType::None,
+                // gray: DebugLineType::None,
+                red: DebugLineType::AlignmentInfluence,
+                green: DebugLineType::CohesionInfluence,
+                blue: DebugLineType::InertiaInfluence,
+                gray: DebugLineType::TotalInfluence,
+            },
+        }
+    }
+    fn get_set<'a>(self: &'a Self, id: &ConfigurationSetId) -> &'a ConfigurationSet {
+        match id {
+            ConfigurationSetId::Player => {
+                &self.player
+            }
+            ConfigurationSetId::Sheep => {
+                &self.sheep
+            }
+        }
+    }
+}
+
+#[derive(Reflect, Default, Resource, InspectorOptions)]
+#[reflect(Resource, InspectorOptions)]
+pub struct Configuration {
+    player: ConfigurationSet,
+    sheep: ConfigurationSet,
+    flocking: FlockingConfiguration,
+    runner: RunnerConfiguration,
+    grazing_scale: f32,
+    inertia_scale: f32,
+    debug_lines: DebugLineConfiguration,
+}
+
+#[derive(Reflect, Default, InspectorOptions)]
+#[reflect(InspectorOptions)]
+pub struct FlockingConfiguration {
+    alignment_enabled: bool,
+    #[inspector(min = 0.0)]
+    alignment_distance: f32,
+    #[inspector(min = 0.0)]
+    alignment_scale: f32,
+    #[inspector(min = 0.0)]
+    alignment_distance_cap_fraction: f32,
+    cohesion_enabled: bool,
+    cohesion_velocity_scale: bool,
+    #[inspector(min = 0.0)]
+    cohesion_distance: f32,
+    #[inspector(min = 0.0)]
+    cohesion_scale: f32,
+    separation_enabled: bool,
+    #[inspector(min = 0.0)]
+    separation_distance: f32,
+    #[inspector(min = 0.0)]
+    separation_scale: f32,
+}
+
+#[derive(Reflect, Default, InspectorOptions)]
+#[reflect(InspectorOptions)]
+pub struct RunnerConfiguration {
+    #[inspector(min = 0.0)]
+    scale: f32,
+    #[inspector(min = 0.0)]
+    speed_fraction: f32,
+    #[inspector(min = 0.0)]
+    scare_distance: f32,
 }
 
 #[derive(Component)]
@@ -55,6 +157,9 @@ pub struct Grazing {
 }
 
 #[derive(Component, Default)]
+pub struct Inertia ();
+
+#[derive(Component, Default)]
 pub struct Influences {
     pub player_input_influence: Option<Vec3>,
     pub alignment_influence: Option<Vec3>,
@@ -64,6 +169,7 @@ pub struct Influences {
     pub runner_influence_unmodified: Option<Vec3>,
     pub runner_influence_max: Option<Vec3>,
     pub grazing_influence: Option<Vec3>,
+    pub inertia_influence: Option<Vec3>,
     pub total_influence: Option<Vec3>,
     pub max_influence: Option<Vec3>,
 }
@@ -81,36 +187,6 @@ pub struct ConfigurationSet {
     max_speed: f32,
 }
 
-#[derive(Reflect, Default, InspectorOptions)]
-#[reflect(InspectorOptions)]
-pub struct FlockingConfiguration {
-    #[inspector(min = 0.0)]
-    alignment_distance: f32,
-    #[inspector(min = 0.0)]
-    alignment_scale: f32,
-    #[inspector(min = 0.0)]
-    alignment_distance_cap_fraction: f32,
-    #[inspector(min = 0.0)]
-    cohesion_distance: f32,
-    #[inspector(min = 0.0)]
-    cohesion_scale: f32,
-    #[inspector(min = 0.0)]
-    separation_distance: f32,
-    #[inspector(min = 0.0)]
-    separation_scale: f32,
-}
-
-#[derive(Reflect, Default, InspectorOptions)]
-#[reflect(InspectorOptions)]
-pub struct RunnerConfiguration {
-    #[inspector(min = 0.0)]
-    scale: f32,
-    #[inspector(min = 0.0)]
-    speed_fraction: f32,
-    #[inspector(min = 0.0)]
-    scare_distance: f32,
-}
-
 #[derive(Reflect, Default)]
 pub enum DebugLineType {
     #[default]
@@ -121,6 +197,8 @@ pub enum DebugLineType {
     RunnerInfluence,
     RunnerUnmodifiedInfluence,
     RunnerMaxInfluence,
+    GrazingInfluence,
+    InertiaInfluence,
     TotalInfluence,
     MaxInfluence,
 }
@@ -132,66 +210,6 @@ pub struct DebugLineConfiguration {
     green: DebugLineType,
     blue: DebugLineType,
     gray: DebugLineType,
-}
-
-#[derive(Reflect, Default, Resource, InspectorOptions)]
-#[reflect(Resource, InspectorOptions)]
-pub struct Configuration {
-    player: ConfigurationSet,
-    sheep: ConfigurationSet,
-    flocking: FlockingConfiguration,
-    runner: RunnerConfiguration,
-    grazing_scale: f32,
-    debug_lines: DebugLineConfiguration,
-}
-
-impl Configuration {
-    pub fn new() -> Self {
-        Self {
-            player: ConfigurationSet {
-                max_speed: 300.0,
-            },
-            sheep: ConfigurationSet {
-                max_speed: 100.0,
-            },
-            flocking: FlockingConfiguration {
-                alignment_distance: 70.0,
-                alignment_scale: 120.0,
-                alignment_distance_cap_fraction: 0.6,
-                cohesion_distance: 300.0,
-                cohesion_scale: 0.3,
-                separation_distance: 30.0,
-                separation_scale: 30.0,
-            },
-            runner: RunnerConfiguration {
-                scale: 10.0,
-                speed_fraction: 1.4,
-                scare_distance: 100.0,
-            },
-            grazing_scale: 1.0,
-            debug_lines: DebugLineConfiguration {
-                enable: false,
-                // red: DebugLineType::None,
-                // green: DebugLineType::None,
-                // blue: DebugLineType::None,
-                // gray: DebugLineType::None,
-                red: DebugLineType::AlignmentInfluence,
-                green: DebugLineType::CohesionInfluence,
-                blue: DebugLineType::SeparationInfluence,
-                gray: DebugLineType::TotalInfluence,
-            },
-        }
-    }
-    fn get_set<'a>(self: &'a Self, id: &ConfigurationSetId) -> &'a ConfigurationSet {
-        match id {
-            ConfigurationSetId::Player => {
-                &self.player
-            }
-            ConfigurationSetId::Sheep => {
-                &self.sheep
-            }
-        }
-    }
 }
 
 fn reset_influences(mut query: Query<&mut Influences>) {
@@ -271,51 +289,59 @@ fn find_flocking_neighbours(
     other_query: Query<(Entity, &Transform, &Velocity), With<Flocking>>,
     config: Res<Configuration>,
 ) {
-    for (entity, current_transform, mut current_flocking) in query.iter_mut() {
-        let current_transform: &Transform = current_transform;
-        current_flocking.alignment_values.clear();
-        current_flocking.cohesion_positions.clear();
-        current_flocking.separation_positions.clear();
-        for (other_entity, other_transform, other_velocity) in other_query.iter() {
-            if entity == other_entity { continue }
-            let distance = current_transform.translation.distance(other_transform.translation);
-            if distance < config.flocking.alignment_distance {
-                current_flocking.alignment_values.push(NeighbourPair {
-                    position: other_transform.translation,
-                    velocity: Vec3::from((other_velocity.linvel, 0.0)),
-                });
-            }
-            if distance < config.flocking.cohesion_distance {
-                current_flocking.cohesion_positions.push(other_transform.translation);
-            }
-            if distance < config.flocking.separation_distance {
-                current_flocking.separation_positions.push(other_transform.translation);
+    let config = &config.flocking;
+    if config.alignment_enabled || config.cohesion_enabled || config.separation_enabled {
+        for (entity, current_transform, mut current_flocking) in query.iter_mut() {
+            let current_transform: &Transform = current_transform;
+            current_flocking.alignment_values.clear();
+            current_flocking.cohesion_positions.clear();
+            current_flocking.separation_positions.clear();
+            for (other_entity, other_transform, other_velocity) in other_query.iter() {
+                if entity == other_entity { continue; }
+                let distance = current_transform.translation.distance(other_transform.translation);
+                if distance < config.alignment_distance && config.alignment_enabled {
+                    current_flocking.alignment_values.push(NeighbourPair {
+                        position: other_transform.translation,
+                        velocity: Vec3::from((other_velocity.linvel, 0.0)),
+                    });
+                }
+                if distance < config.cohesion_distance && config.cohesion_enabled {
+                    current_flocking.cohesion_positions.push(other_transform.translation);
+                }
+                if distance < config.separation_distance && config.separation_enabled {
+                    current_flocking.separation_positions.push(other_transform.translation);
+                }
             }
         }
     }
 }
 
 fn calculate_flocking(
-    mut query: Query<(&mut Influences, &Flocking, &Transform), With<Velocity>>,
-    configuration: Res<Configuration>,
+    mut query: Query<(&mut Influences, &Flocking, &Transform, &Velocity)>,
+    config: Res<Configuration>,
 ) {
-    for (mut influences, flocking, transform) in query.iter_mut() {
+    for (
+        mut influences,
+        flocking,
+        transform,
+        velocity,
+    ) in query.iter_mut() {
         // Alignment
         if flocking.alignment_values.len() > 0 {
             let mut alignment = Vec3::ZERO;
             for NeighbourPair { position, velocity } in flocking.alignment_values.iter() {
                 let distance = position.distance(transform.translation);
-                let max_distance = configuration.flocking.alignment_distance;
+                let max_distance = config.flocking.alignment_distance;
                 let distance_scale = (max_distance - distance) / max_distance;
                 let distance_scale = f32::max(
                     distance_scale,
-                    configuration.flocking.alignment_distance_cap_fraction,
+                    config.flocking.alignment_distance_cap_fraction,
                 );
                 alignment += *velocity * distance_scale;
             }
             alignment /= flocking.alignment_values.len() as f32;
             influences.alignment_influence = Some(
-                alignment * configuration.flocking.alignment_scale / 10000.0
+                alignment * config.flocking.alignment_scale / 10000.0
             );
         }
 
@@ -327,8 +353,14 @@ fn calculate_flocking(
             }
             cohesion_center /= flocking.cohesion_positions.len() as f32;
             let correction_to_center = cohesion_center - transform.translation;
+            let velocity_scale;
+            if config.flocking.cohesion_velocity_scale {
+                velocity_scale = velocity.linvel.length() / config.sheep.max_speed;
+            } else {
+                velocity_scale = 1.0;
+            }
             influences.cohesion_influence = Some(
-                correction_to_center * configuration.flocking.cohesion_scale / 1000.0
+                correction_to_center * config.flocking.cohesion_scale * velocity_scale / 1000.0
             );
         }
 
@@ -342,7 +374,7 @@ fn calculate_flocking(
             }
             separation /= flocking.separation_positions.len() as f32;
             influences.separation_influence = Some(
-                separation * configuration.flocking.separation_scale / 100000.0
+                separation * config.flocking.separation_scale / 100000.0
             );
         }
     }
@@ -375,6 +407,21 @@ fn calculate_grazing(
     }
 }
 
+fn calculate_inertia(
+    mut query: Query<(&mut Influences, &Velocity, &ConfigurationSetId), With<Inertia>>,
+    config: Res<Configuration>,
+) {
+    for (
+        mut influences,
+        velocity,
+        config_id
+    ) in query.iter_mut() {
+        let config_set = config.get_set(config_id);
+        let influence = (velocity.linvel / config_set.max_speed) * config.inertia_scale / 100.0;
+        influences.inertia_influence = Some(Vec3::from((influence, 0.0)));
+    }
+}
+
 fn calculate_velocity(
     mut query: Query<(
         &mut Velocity,
@@ -403,6 +450,9 @@ fn calculate_velocity(
             total_influence += influence;
         }
         if let Some(influence) = influences.grazing_influence {
+            total_influence += influence;
+        }
+        if let Some(influence) = influences.inertia_influence {
             total_influence += influence;
         }
 
@@ -446,6 +496,8 @@ fn draw_debug_lines(
                 DebugLineType::RunnerInfluence => { influences.runner_influence }
                 DebugLineType::RunnerUnmodifiedInfluence => { influences.runner_influence_unmodified }
                 DebugLineType::RunnerMaxInfluence => { influences.runner_influence_max }
+                DebugLineType::GrazingInfluence => { influences.grazing_influence }
+                DebugLineType::InertiaInfluence => { influences.inertia_influence }
                 DebugLineType::TotalInfluence => { influences.total_influence }
                 DebugLineType::MaxInfluence => { influences.max_influence }
             };
