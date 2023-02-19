@@ -13,12 +13,19 @@ pub fn setup(
     commands.spawn(Camera2dBundle::default());
 
     animation::load_sprite_sheets(asset_server, &mut texture_atlases, &mut config.animation);
-    let normal = Normal::new(0.0, 150.0).unwrap();
+
     spawn_player(&mut commands, &config.animation.player,Vec3::new(-400.0, 0.0, 0.0));
+    let normal = Normal::new(0.0, 150.0).unwrap();
     for _ in 0..40 {
         let x = normal.sample(&mut rand::thread_rng());
         let y = normal.sample(&mut rand::thread_rng());
         spawn_sheep(&mut commands, &config.animation.sheep, Vec3::new(x, y, 0.0));
+    }
+    let normal = Normal::new(0.0, 400.0).unwrap();
+    for _ in 0..400 {
+        let x = normal.sample(&mut rand::thread_rng());
+        let y = normal.sample(&mut rand::thread_rng());
+        spawn_grass(&mut commands, &config.animation.grass, Vec3::new(x, y, 0.0));
     }
 }
 
@@ -32,7 +39,7 @@ struct Common {
     influences: Influences,
 }
 
-fn spawn_common(config_set: &animation::AnimationSet, position: Vec3) -> Common {
+fn spawn_actor(config_set: &animation::AnimationSet, position: Vec3) -> Common {
     Common {
         animation_bundle: animation::AnimationBundle::from(config_set, position),
         collider: Collider::ball(15.0),
@@ -49,7 +56,7 @@ fn spawn_player(
     position: Vec3,
 ) {
     commands.spawn((
-        spawn_common(config_set, position),
+        spawn_actor(config_set, position),
         PlayerInput {},
         Dominance::group(10),
         Name::new("Player"),
@@ -64,7 +71,7 @@ fn spawn_sheep(
 ) {
     commands.spawn(
         (
-            spawn_common(config_set, position),
+            spawn_actor(config_set, position),
             Flocking::default(),
             Grazing {
                 current_direction: None,
@@ -77,6 +84,20 @@ fn spawn_sheep(
             Name::new("Sheep"),
             ConfigurationSetId::Sheep,
             Inertia::default(),
+        )
+    );
+}
+
+fn spawn_grass(
+    commands: &mut Commands,
+    config_set: &animation::AnimationSet,
+    position: Vec3,
+) {
+    commands.spawn(
+        (
+            animation::AnimationBundle::from(config_set, position),
+            Name::new("Grass"),
+            ConfigurationSetId::Grass,
         )
     );
 }

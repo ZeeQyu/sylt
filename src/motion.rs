@@ -79,6 +79,9 @@ impl Configuration {
             ConfigurationSetId::Sheep => {
                 &self.sheep
             }
+            ConfigurationSetId::Grass => {
+                &self.sheep
+            }
         }
     }
 }
@@ -97,8 +100,8 @@ pub struct Configuration {
     debug_lines: DebugLineConfiguration,
 }
 
-#[derive(Reflect, Default, InspectorOptions)]
-#[reflect(InspectorOptions)]
+#[derive(Reflect, Default, Resource, InspectorOptions)]
+#[reflect(Resource, InspectorOptions)]
 pub struct FlockingConfiguration {
     alignment_enabled: bool,
     #[inspector(min = 0.0)]

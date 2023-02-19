@@ -37,6 +37,7 @@ fn main() {
 pub enum ConfigurationSetId {
     Player,
     Sheep,
+    Grass,
 }
 
 
