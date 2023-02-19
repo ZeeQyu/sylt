@@ -40,7 +40,7 @@ impl AnimationConfiguration {
                     last_index: 0,
                 },
                 running: SingleAnimation {
-                    animation_interval: 0.3,
+                    animation_interval: 0.1,
                     first_index: 0,
                     last_index: 1,
                 },
