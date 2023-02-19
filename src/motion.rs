@@ -30,6 +30,7 @@ impl Plugin for MotionPlugin {
 impl Configuration {
     pub fn new() -> Self {
         Self {
+            zoom: 1.0,
             animation: crate::animation::AnimationConfiguration::new(),
             player: ConfigurationSet {
                 max_speed: 300.0,
@@ -85,6 +86,7 @@ impl Configuration {
 #[derive(Reflect, Default, Resource, InspectorOptions)]
 #[reflect(Resource, InspectorOptions)]
 pub struct Configuration {
+    pub zoom: f32,
     pub animation: crate::animation::AnimationConfiguration,
     player: ConfigurationSet,
     sheep: ConfigurationSet,

@@ -28,6 +28,7 @@ fn main() {
 
         .insert_resource(ClearColor(background_color))
         .insert_resource(RapierConfiguration { gravity: Vec2::ZERO, ..default() })
+        .add_system(update_zoom)
         .add_startup_system(spawning::setup)
         .run();
 }
@@ -38,3 +39,12 @@ pub enum ConfigurationSetId {
     Sheep,
 }
 
+
+fn update_zoom(
+    mut query: Query<&mut OrthographicProjection>,
+    config: Res<Configuration>,
+) {
+    for mut projection in query.iter_mut() {
+        projection.scale = config.zoom;
+    }
+}
