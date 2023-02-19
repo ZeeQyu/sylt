@@ -13,7 +13,15 @@ const TIME_STEP: f32 = 1.0 / 60.0;
 fn main() {
     let background_color = Color::rgb_u8(46 as u8, 34 as u8, 47 as u8);
     App::new()
-        .add_plugins(DefaultPlugins.set(ImagePlugin::default_nearest()))
+        .add_plugins(DefaultPlugins
+            .set(ImagePlugin::default_nearest())
+            .set(WindowPlugin {
+                window: WindowDescriptor {
+                        title: String::from("Sylt"),
+                        ..default()
+                },
+                ..default()
+            }))
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(30.0))
         // .add_plugin(inspector_egui::WorldInspectorPlugin)
         .add_plugin(DebugLinesPlugin::default())

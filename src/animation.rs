@@ -42,7 +42,7 @@ impl AnimationConfiguration {
                         last_index: 0,
                     },
                     running: SingleAnimation {
-                        animation_interval: 0.1,
+                        animation_interval: 0.15,
                         first_index: 0,
                         last_index: 1,
                     },
@@ -175,7 +175,7 @@ struct SingleAnimation {
     last_index: usize,
 }
 impl FromReflect for SingleAnimation {
-    fn from_reflect(reflect: &dyn Reflect) -> Option<Self> {
+    fn from_reflect(_reflect: &dyn Reflect) -> Option<Self> {
         None
     }
 }

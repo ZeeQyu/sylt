@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
-use rand_distr::{Normal, Distribution};
+use rand_distr::{Normal, Uniform, Distribution};
 use crate::{animation, ConfigurationSetId};
 use crate::motion::{Configuration, Flocking, Grazing, Inertia, Influences, PlayerInput, RunsFromPlayer};
 
@@ -15,16 +15,16 @@ pub fn setup(
     animation::load_sprite_sheets(asset_server, &mut texture_atlases, &mut config.animation);
 
     spawn_player(&mut commands, &config.animation.player,Vec3::new(-400.0, 0.0, 0.0));
-    let normal = Normal::new(0.0, 150.0).unwrap();
+    let distribution = Normal::new(0.0, 150.0).unwrap();
     for _ in 0..40 {
-        let x = normal.sample(&mut rand::thread_rng());
-        let y = normal.sample(&mut rand::thread_rng());
+        let x = distribution.sample(&mut rand::thread_rng());
+        let y = distribution.sample(&mut rand::thread_rng());
         spawn_sheep(&mut commands, &config.animation.sheep, Vec3::new(x, y, 0.0));
     }
-    let normal = Normal::new(0.0, 400.0).unwrap();
-    for _ in 0..400 {
-        let x = normal.sample(&mut rand::thread_rng());
-        let y = normal.sample(&mut rand::thread_rng());
+    let distribution = Uniform::new(-600.0, 600.0);
+    for _ in 0..100 {
+        let x = distribution.sample(&mut rand::thread_rng());
+        let y = distribution.sample(&mut rand::thread_rng());
         spawn_grass(&mut commands, &config.animation.grass, Vec3::new(x, y, 0.0));
     }
 }
