@@ -22,7 +22,7 @@ pub fn setup(
         spawn_sheep(&mut commands, &config.animation.sheep, Vec3::new(x, y, 0.0));
     }
     let distribution = Uniform::new(-600.0, 600.0);
-    for _ in 0..100 {
+    for _ in 0..300 {
         let x = distribution.sample(&mut rand::thread_rng());
         let y = distribution.sample(&mut rand::thread_rng());
         spawn_grass(&mut commands, &config.animation.grass, Vec3::new(x, y, 0.0));
@@ -39,14 +39,15 @@ struct Common {
     influences: Influences,
 }
 
-fn spawn_actor(config_set: &animation::AnimationSet, position: Vec3) -> Common {
+fn spawn_actor(config_set: &animation::AnimationSet, position: Vec3, collider: Collider) -> Common {
     Common {
         animation_bundle: animation::AnimationBundle::from(config_set, position),
-        collider: Collider::ball(15.0),
+        //collider: Collider::ball(15.0),
         rigid_body: RigidBody::Dynamic,
         locked_axes: LockedAxes::ROTATION_LOCKED,
         velocity: Velocity::default(),
         influences: Influences::default(),
+        collider,
     }
 }
 
@@ -56,7 +57,7 @@ fn spawn_player(
     position: Vec3,
 ) {
     commands.spawn((
-        spawn_actor(config_set, position),
+        spawn_actor(config_set, position, Collider::ball(15.0)),
         PlayerInput {},
         Dominance::group(10),
         Name::new("Player"),
@@ -71,7 +72,7 @@ fn spawn_sheep(
 ) {
     commands.spawn(
         (
-            spawn_actor(config_set, position),
+            spawn_actor(config_set, position, Collider::ball(13.0)),
             Flocking::default(),
             Grazing {
                 current_direction: None,

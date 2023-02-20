@@ -78,13 +78,13 @@ impl AnimationConfiguration {
                 atlas_tile_columns: 4,
                 atlas_tile_rows: 4,
                 texture_size: Vec2::new(16.0, 16.0),
-                scale: Vec2::new(1.0, 1.0),
+                scale: Vec2::new(2.0, 2.0),
                 snappy_animations: false,
                 animation_class: AnimationClass::Simple {
                     simple: SingleAnimation {
                         animation_interval: 0.7,
                         first_index: 8,
-                        last_index: 8,
+                        last_index: 9,
                     },
                 },
             },

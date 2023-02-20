@@ -29,7 +29,7 @@ fn main() {
         .add_plugin(motion::MotionPlugin::default())
         .add_plugin(animation::AnimationPlugin::default())
 
-        // .add_plugin(RapierDebugRenderPlugin::default())
+        .add_plugin(RapierDebugRenderPlugin::default())
 
         .register_type::<Configuration>()
         .insert_resource::<Configuration>(Configuration::new())
