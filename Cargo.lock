@@ -270,7 +270,7 @@ dependencies = [
 [[package]]
 name = "bevy-yoleck"
 version = "0.4.1"
-source = "git+https://github.com/ZeeQyu/bevy-yoleck?rev=220ee2517188c02414cdf84360e1b5c25ddf1d18#220ee2517188c02414cdf84360e1b5c25ddf1d18"
+source = "git+https://github.com/ZeeQyu/bevy-yoleck?rev=b01a40dbc9afc7fb36026ef376d21cddfb660d91#b01a40dbc9afc7fb36026ef376d21cddfb660d91"
 dependencies = [
  "anyhow",
  "bevy",
@@ -3342,6 +3342,7 @@ dependencies = [
  "rand",
  "rand_distr",
  "serde",
+ "serde_json",
 ]
 
 [[package]]

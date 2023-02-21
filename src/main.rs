@@ -12,7 +12,7 @@ use bevy_inspector_egui::quick as inspector_egui;
 use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 use iyes_loopless::prelude::*;
 
-const TIME_STEP: f32 = 1.0 / 60.0;
+// const TIME_STEP: f32 = 1.0 / 60.0;
 
 fn main() {
     App::new()
@@ -69,13 +69,12 @@ fn main() {
                 .run_in_state(GameState::Game)
                 .label("motion_apply")
                 .after("motion")
-                // .with_run_criteria(FixedTimestep::step(TIME_STEP as f64))
                 .with_system(calculate_velocity)
                 .with_system(draw_debug_lines)
                 .into()
         )
 
-        .add_plugin(RapierDebugRenderPlugin::default())
+        // .add_plugin(RapierDebugRenderPlugin::default())
         // .add_plugin(LogDiagnosticsPlugin::default())
         // .add_plugin(FrameTimeDiagnosticsPlugin::default())
 

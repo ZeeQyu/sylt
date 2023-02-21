@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
-use crate::{TIME_STEP, ConfigurationSetId};
+use crate::{ConfigurationSetId};
 use bevy_prototype_debug_lines::*;
 use bevy_inspector_egui::prelude::*;
 
@@ -122,8 +122,8 @@ pub struct RunnerConfiguration {
 #[derive(Component)]
 pub struct PlayerInput {}
 
-#[derive(Component)]
-pub struct RunsFromPlayer {
+#[derive(Component, Default)]
+pub struct Runner {
     pub direction: Vec3,
     pub magnitude: f32,
 }
@@ -230,8 +230,9 @@ pub fn apply_player_input(
 
 pub fn run_from_players(
     player_query: Query<&Transform, With<PlayerInput>>,
-    mut runner_query: Query<(&mut RunsFromPlayer, &mut Influences, &Transform), Without<PlayerInput>>,
+    mut runner_query: Query<(&mut Runner, &mut Influences, &Transform), Without<PlayerInput>>,
     config: Res<Configuration>,
+    time: Res<Time>,
 ) {
     let Transform { translation: player_position, .. } = player_query.single();
     for (
@@ -239,7 +240,7 @@ pub fn run_from_players(
         mut influences,
         Transform { translation: runner_position, .. }
     ) in runner_query.iter_mut() {
-        let mut runner: &mut RunsFromPlayer = &mut runner;
+        let mut runner: &mut Runner = &mut runner;
 
         let scare_distance = config.runner.scare_distance;
         if runner_position.distance(*player_position) < scare_distance {
@@ -248,10 +249,10 @@ pub fn run_from_players(
             if runner.magnitude < 0.5 {
                 runner.magnitude = 0.5
             } else {
-                runner.magnitude = f32::min(runner.magnitude + 1.0 * TIME_STEP, 1.0);
+                runner.magnitude = f32::min(runner.magnitude + time.delta().as_secs_f32() * 1.0, 1.0);
             }
         } else {
-            runner.magnitude -= 1.0 * TIME_STEP;
+            runner.magnitude -= time.delta().as_secs_f32() * 1.0;
         }
         if runner.magnitude >= f32::EPSILON {
             let mut influence = runner.direction * runner.magnitude * config.runner.scale / 10.0;
@@ -367,9 +368,10 @@ pub fn calculate_flocking(
 pub fn calculate_grazing(
     mut query: Query<(&mut Influences, &mut Grazing)>,
     config: Res<Configuration>,
+    time: Res<Time>,
 ) {
     for (mut influences, mut grazing) in query.iter_mut() {
-        grazing.time_left -= TIME_STEP;
+        grazing.time_left -= time.delta().as_secs_f32();
         if grazing.time_left <= 0.0 {
             if rand::random::<f32>() < 0.4 {
                 let direction = Vec3::new(
@@ -492,7 +494,7 @@ pub fn draw_debug_lines(
                 lines.line_colored(
                     transform.translation + Vec3::Z,
                     transform.translation + influence * line_graphics_scale + Vec3::Z + offset,
-                    TIME_STEP,
+                    0.0,
                     color,
                 );
             }

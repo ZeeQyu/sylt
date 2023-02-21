@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::Velocity;
 use bevy_inspector_egui::prelude::*;
-use crate::{TIME_STEP, ConfigurationSetId};
+use crate::{ConfigurationSetId};
 use crate::motion::Configuration;
 use std::time::Duration;
 
@@ -263,6 +263,7 @@ pub fn animate_sprite(
         Option<&Velocity>,
     )>,
     config: Res<Configuration>,
+    time: Res<Time>,
 ) {
     for (
         mut sprite,
@@ -308,7 +309,7 @@ pub fn animate_sprite(
                 sprite.flip_x = states.next_flip
             }
         }
-        timer.tick(Duration::from_secs_f32(TIME_STEP));
+        timer.tick(time.delta());
         if timer.just_finished() {
             sprite.index = if sprite.index == indices.last {
                 indices.first
