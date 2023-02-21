@@ -22,7 +22,7 @@ pub fn setup(
         spawn_sheep(&mut commands, &config.animation.sheep, Vec3::new(x, y, 0.0));
     }
     let distribution = Uniform::new(-600.0, 600.0);
-    for _ in 0..300 {
+    for _ in 0..100 {
         let x = distribution.sample(&mut rand::thread_rng());
         let y = distribution.sample(&mut rand::thread_rng());
         spawn_grass(&mut commands, &config.animation.grass, Vec3::new(x, y, 0.0));

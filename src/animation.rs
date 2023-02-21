@@ -84,7 +84,7 @@ impl AnimationConfiguration {
                     simple: SingleAnimation {
                         animation_interval: 0.7,
                         first_index: 8,
-                        last_index: 9,
+                        last_index: 8,
                     },
                 },
             },
@@ -174,6 +174,7 @@ struct SingleAnimation {
     first_index: usize,
     last_index: usize,
 }
+
 impl FromReflect for SingleAnimation {
     fn from_reflect(_reflect: &dyn Reflect) -> Option<Self> {
         None
@@ -229,8 +230,8 @@ pub struct AnimationBundle {
 impl AnimationBundle {
     pub fn from(config_set: &AnimationSet, position: Vec3) -> Self {
         let default_animation = match &config_set.animation_class {
-            AnimationClass::Simple {simple} => { simple }
-            AnimationClass::Actor {idle, ..} => { idle }
+            AnimationClass::Simple { simple } => { simple }
+            AnimationClass::Actor { idle, .. } => { idle }
         };
         Self {
             sprite_sheet: SpriteSheetBundle {
@@ -316,7 +317,7 @@ fn animate_sprite(
                 sprite.flip_x = states.next_flip
             }
         }
-        timer.tick(time.delta());
+        timer.tick(Duration::from_secs_f32(TIME_STEP));
         if timer.just_finished() {
             sprite.index = if sprite.index == indices.last {
                 indices.first

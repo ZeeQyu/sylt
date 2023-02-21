@@ -1,3 +1,7 @@
 - Speed of running animations based on movement speed?
 - Randomized grass animation for waving in the wind.
 - Grass animation propagating in a wind-pattern
+- Sprites:
+    - Combine all different animations into one sprite sheet per entity.
+    - Add food trough as a game element sheep can be attracted toward.
+-
