@@ -3,29 +3,14 @@ use bevy_rapier2d::prelude::*;
 use crate::{TIME_STEP, ConfigurationSetId};
 use bevy_prototype_debug_lines::*;
 use bevy_inspector_egui::prelude::*;
-use bevy::time::FixedTimestep;
 
-#[derive(Default)]
-pub struct MotionPlugin;
-
-impl Plugin for MotionPlugin {
-    fn build(&self, app: &mut App) {
-        app.add_system_set(
-            SystemSet::new()
-                .label("motion")
-                .with_run_criteria(FixedTimestep::step(TIME_STEP as f64))
-                .with_system(reset_influences)
-                .with_system(apply_player_input.before(calculate_velocity).after(reset_influences))
-                .with_system(run_from_players.before(calculate_velocity).after(reset_influences))
-                .with_system(find_flocking_neighbours.before(calculate_flocking))
-                .with_system(calculate_flocking.before(calculate_velocity).after(reset_influences))
-                .with_system(calculate_grazing.before(calculate_velocity).after(reset_influences))
-                .with_system(calculate_inertia.before(calculate_velocity).after(reset_influences))
-                .with_system(calculate_velocity)
-                .with_system(draw_debug_lines.after(calculate_velocity))
-        );
-    }
-}
+// #[derive(Default)]
+// pub struct MotionPlugin;
+//
+// impl Plugin for MotionPlugin {
+//     fn build(&self, app: &mut App) {
+//     }
+// }
 
 impl Configuration {
     pub fn new() -> Self {
@@ -211,13 +196,13 @@ pub struct DebugLineConfiguration {
     gray: DebugLineType,
 }
 
-fn reset_influences(mut query: Query<&mut Influences>) {
+pub fn reset_influences(mut query: Query<&mut Influences>) {
     for mut influence in query.iter_mut() {
         *influence = Influences::default();
     }
 }
 
-fn apply_player_input(
+pub fn apply_player_input(
     keyboard_input: Res<Input<KeyCode>>,
     mut query: Query<(&mut Influences, &PlayerInput)>,
 ) {
@@ -243,7 +228,7 @@ fn apply_player_input(
     influences.player_input_influence = Some(direction);
 }
 
-fn run_from_players(
+pub fn run_from_players(
     player_query: Query<&Transform, With<PlayerInput>>,
     mut runner_query: Query<(&mut RunsFromPlayer, &mut Influences, &Transform), Without<PlayerInput>>,
     config: Res<Configuration>,
@@ -283,7 +268,7 @@ fn run_from_players(
 }
 
 /// Uses the velocity of last frame to find neighbour velocities for flocking behaviour
-fn find_flocking_neighbours(
+pub fn find_flocking_neighbours(
     mut query: Query<(Entity, &Transform, &mut Flocking), With<Velocity>>,
     other_query: Query<(Entity, &Transform, &Velocity), With<Flocking>>,
     config: Res<Configuration>,
@@ -315,7 +300,7 @@ fn find_flocking_neighbours(
     }
 }
 
-fn calculate_flocking(
+pub fn calculate_flocking(
     mut query: Query<(&mut Influences, &Flocking, &Transform, &Velocity)>,
     config: Res<Configuration>,
 ) {
@@ -379,7 +364,7 @@ fn calculate_flocking(
     }
 }
 
-fn calculate_grazing(
+pub fn calculate_grazing(
     mut query: Query<(&mut Influences, &mut Grazing)>,
     config: Res<Configuration>,
 ) {
@@ -406,7 +391,7 @@ fn calculate_grazing(
     }
 }
 
-fn calculate_inertia(
+pub fn calculate_inertia(
     mut query: Query<(&mut Influences, &Velocity, &ConfigurationSetId), With<Inertia>>,
     config: Res<Configuration>,
 ) {
@@ -421,7 +406,7 @@ fn calculate_inertia(
     }
 }
 
-fn calculate_velocity(
+pub fn calculate_velocity(
     mut query: Query<(
         &mut Velocity,
         &mut Influences,
@@ -474,7 +459,7 @@ fn calculate_velocity(
     }
 }
 
-fn draw_debug_lines(
+pub fn draw_debug_lines(
     query: Query<(&Transform, &Influences)>,
     mut lines: ResMut<DebugLines>,
     configuration: Res<Configuration>,

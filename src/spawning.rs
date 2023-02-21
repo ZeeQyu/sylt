@@ -1,3 +1,4 @@
+use bevy::ecs::system::EntityCommands;
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 use rand_distr::{Normal, Uniform, Distribution};
@@ -51,7 +52,7 @@ fn spawn_actor(config_set: &animation::AnimationSet, position: Vec3, collider: C
     }
 }
 
-fn spawn_player(
+pub fn spawn_player(
     commands: &mut Commands,
     config_set: &animation::AnimationSet,
     position: Vec3,
@@ -65,7 +66,7 @@ fn spawn_player(
     ));
 }
 
-fn spawn_sheep(
+pub fn spawn_sheep(
     commands: &mut Commands,
     config_set: &animation::AnimationSet,
     position: Vec3,
@@ -88,8 +89,32 @@ fn spawn_sheep(
         )
     );
 }
+pub fn spawn_sheep_populate(
+    commands: &mut EntityCommands,
+    config_set: &animation::AnimationSet,
+    position: Vec3,
+) {
+    commands.insert(
+        (
+            spawn_actor(config_set, position, Collider::ball(13.0)),
+            Flocking::default(),
+            Grazing {
+                current_direction: None,
+                time_left: (rand::random::<f32>() * 5.0) + 0.0,
+            },
+            RunsFromPlayer {
+                direction: Vec3::ZERO,
+                magnitude: 0.0,
+            },
+            Name::new("Sheep"),
+            ConfigurationSetId::Sheep,
+            Inertia::default(),
+        )
+    );
+}
 
-fn spawn_grass(
+
+pub fn spawn_grass(
     commands: &mut Commands,
     config_set: &animation::AnimationSet,
     position: Vec3,

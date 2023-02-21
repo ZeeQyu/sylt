@@ -1,26 +1,18 @@
 use bevy::prelude::*;
-use bevy::time::FixedTimestep;
 use bevy_rapier2d::prelude::Velocity;
 use bevy_inspector_egui::prelude::*;
 use crate::{TIME_STEP, ConfigurationSetId};
 use crate::motion::Configuration;
 use std::time::Duration;
 
-#[derive(Default)]
-pub struct AnimationPlugin;
-
-impl Plugin for AnimationPlugin {
-    fn build(&self, app: &mut App) {
-        app
-            .add_system_set(
-                SystemSet::new()
-                    .label("animation")
-                    .after("motion")
-                    .with_run_criteria(FixedTimestep::step(TIME_STEP as f64))
-                    .with_system(animate_sprite)
-            );
-    }
-}
+// #[derive(Default)]
+// pub struct AnimationPlugin;
+//
+// impl Plugin for AnimationPlugin {
+//     fn build(&self, app: &mut App) {
+//         app
+//     }
+// }
 
 impl AnimationConfiguration {
     pub fn new() -> Self {
@@ -182,7 +174,7 @@ impl FromReflect for SingleAnimation {
 }
 
 #[derive(Component, Default)]
-struct AnimationStates {
+pub struct AnimationStates {
     current: AnimationType,
     next: AnimationType,
     next_flip: bool,
@@ -253,16 +245,15 @@ impl AnimationBundle {
 }
 
 #[derive(Component)]
-struct AnimationIndices {
+pub struct AnimationIndices {
     first: usize,
     last: usize,
 }
 
 #[derive(Component, Deref, DerefMut)]
-struct AnimationTimer(Timer);
+pub struct AnimationTimer(Timer);
 
-fn animate_sprite(
-    time: Res<Time>,
+pub fn animate_sprite(
     mut query: Query<(
         &mut TextureAtlasSprite,
         &mut AnimationTimer,
