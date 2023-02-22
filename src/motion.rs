@@ -11,7 +11,6 @@ use bevy_inspector_egui::prelude::*;
 //     fn build(&self, app: &mut App) {
 //     }
 // }
-
 impl Configuration {
     pub fn new() -> Self {
         Self {
@@ -204,7 +203,7 @@ pub fn reset_influences(mut query: Query<&mut Influences>) {
 
 pub fn apply_player_input(
     keyboard_input: Res<Input<KeyCode>>,
-    mut query: Query<(&mut Influences, &PlayerInput)>,
+    mut query: Query<&mut Influences, With<PlayerInput>>,
 ) {
     let mut direction = Vec3::new(0.0, 0.0, 0.0);
     if keyboard_input.pressed(KeyCode::Left) ||
@@ -224,77 +223,80 @@ pub fn apply_player_input(
         direction.y -= 1.0;
     }
     direction = direction.normalize_or_zero();
-    let (mut influences, _) = query.single_mut();
-    influences.player_input_influence = Some(direction);
+    for mut influences in query.iter_mut() {
+        influences.player_input_influence = Some(direction);
+    }
 }
 
 pub fn run_from_players(
-    player_query: Query<&Transform, With<PlayerInput>>,
-    mut runner_query: Query<(&mut Runner, &mut Influences, &Transform), Without<PlayerInput>>,
+    player_query: Query<&GlobalTransform, With<PlayerInput>>,
+    mut runner_query: Query<(&mut Runner, &mut Influences, &GlobalTransform), Without<PlayerInput>>,
     config: Res<Configuration>,
     time: Res<Time>,
 ) {
-    let Transform { translation: player_position, .. } = player_query.single();
-    for (
-        mut runner,
-        mut influences,
-        Transform { translation: runner_position, .. }
-    ) in runner_query.iter_mut() {
-        let mut runner: &mut Runner = &mut runner;
+    for player_transform in player_query.iter() {
+        let player_position = player_transform.translation();
+        for (
+            mut runner,
+            mut influences,
+            runner_transform,
+        ) in runner_query.iter_mut() {
+            let runner_position = runner_transform.translation();
+            let mut runner: &mut Runner = &mut runner;
 
-        let scare_distance = config.runner.scare_distance;
-        if runner_position.distance(*player_position) < scare_distance {
-            runner.direction = (*runner_position - *player_position).normalize_or_zero();
-            // runner.direction = (*player_position - *runner_position).normalize_or_zero();
-            if runner.magnitude < 0.5 {
-                runner.magnitude = 0.5
+            let scare_distance = config.runner.scare_distance;
+            if runner_position.distance(player_position) < scare_distance {
+                runner.direction = (runner_position - player_position).normalize_or_zero();
+                // runner.direction = (*player_position - *runner_position).normalize_or_zero();
+                if runner.magnitude < 0.5 {
+                    runner.magnitude = 0.5
+                } else {
+                    runner.magnitude = f32::min(runner.magnitude + time.delta().as_secs_f32() * 1.0, 1.0);
+                }
             } else {
-                runner.magnitude = f32::min(runner.magnitude + time.delta().as_secs_f32() * 1.0, 1.0);
+                runner.magnitude -= time.delta().as_secs_f32() * 1.0;
             }
-        } else {
-            runner.magnitude -= time.delta().as_secs_f32() * 1.0;
-        }
-        if runner.magnitude >= f32::EPSILON {
-            let mut influence = runner.direction * runner.magnitude * config.runner.scale / 10.0;
-            influences.runner_influence_unmodified = Some(influence);
-            let influence_length = influence.length();
-            if influence_length > config.runner.speed_fraction {
-                influence *= config.runner.speed_fraction / influence_length;
+            if runner.magnitude >= f32::EPSILON {
+                let mut influence = runner.direction * runner.magnitude * config.runner.scale / 10.0;
+                influences.runner_influence_unmodified = Some(influence);
+                let influence_length = influence.length();
+                if influence_length > config.runner.speed_fraction {
+                    influence *= config.runner.speed_fraction / influence_length;
+                }
+                let influence_max = influence * config.runner.speed_fraction / influence_length;
+                influences.runner_influence_max = Some(influence_max);
+                influences.runner_influence = Some(influence);
             }
-            let influence_max = influence * config.runner.speed_fraction / influence_length;
-            influences.runner_influence_max = Some(influence_max);
-            influences.runner_influence = Some(influence);
         }
     }
 }
 
 /// Uses the velocity of last frame to find neighbour velocities for flocking behaviour
 pub fn find_flocking_neighbours(
-    mut query: Query<(Entity, &Transform, &mut Flocking), With<Velocity>>,
-    other_query: Query<(Entity, &Transform, &Velocity), With<Flocking>>,
+    mut query: Query<(Entity, &GlobalTransform, &mut Flocking), With<Velocity>>,
+    other_query: Query<(Entity, &GlobalTransform, &Velocity), With<Flocking>>,
     config: Res<Configuration>,
 ) {
     let config = &config.flocking;
     if config.alignment_enabled || config.cohesion_enabled || config.separation_enabled {
         for (entity, current_transform, mut current_flocking) in query.iter_mut() {
-            let current_transform: &Transform = current_transform;
             current_flocking.alignment_values.clear();
             current_flocking.cohesion_positions.clear();
             current_flocking.separation_positions.clear();
             for (other_entity, other_transform, other_velocity) in other_query.iter() {
                 if entity == other_entity { continue; }
-                let distance = current_transform.translation.distance(other_transform.translation);
+                let distance = current_transform.translation().distance(other_transform.translation());
                 if distance < config.alignment_distance && config.alignment_enabled {
                     current_flocking.alignment_values.push(NeighbourPair {
-                        position: other_transform.translation,
+                        position: other_transform.translation(),
                         velocity: Vec3::from((other_velocity.linvel, 0.0)),
                     });
                 }
                 if distance < config.cohesion_distance && config.cohesion_enabled {
-                    current_flocking.cohesion_positions.push(other_transform.translation);
+                    current_flocking.cohesion_positions.push(other_transform.translation());
                 }
                 if distance < config.separation_distance && config.separation_enabled {
-                    current_flocking.separation_positions.push(other_transform.translation);
+                    current_flocking.separation_positions.push(other_transform.translation());
                 }
             }
         }
@@ -302,7 +304,7 @@ pub fn find_flocking_neighbours(
 }
 
 pub fn calculate_flocking(
-    mut query: Query<(&mut Influences, &Flocking, &Transform, &Velocity)>,
+    mut query: Query<(&mut Influences, &Flocking, &GlobalTransform, &Velocity)>,
     config: Res<Configuration>,
 ) {
     for (
@@ -315,7 +317,7 @@ pub fn calculate_flocking(
         if flocking.alignment_values.len() > 0 {
             let mut alignment = Vec3::ZERO;
             for NeighbourPair { position, velocity } in flocking.alignment_values.iter() {
-                let distance = position.distance(transform.translation);
+                let distance = position.distance(transform.translation());
                 let max_distance = config.flocking.alignment_distance;
                 let distance_scale = (max_distance - distance) / max_distance;
                 let distance_scale = f32::max(
@@ -337,7 +339,7 @@ pub fn calculate_flocking(
                 cohesion_center += *position;
             }
             cohesion_center /= flocking.cohesion_positions.len() as f32;
-            let correction_to_center = cohesion_center - transform.translation;
+            let correction_to_center = cohesion_center - transform.translation();
             let velocity_scale;
             if config.flocking.cohesion_velocity_scale {
                 velocity_scale = velocity.linvel.length() / config.sheep.max_speed;
@@ -353,7 +355,7 @@ pub fn calculate_flocking(
         if flocking.separation_positions.len() > 0 {
             let mut separation = Vec3::ZERO;
             for position in flocking.separation_positions.iter() {
-                let to_neighbour: Vec3 = *position - transform.translation;
+                let to_neighbour: Vec3 = *position - transform.translation();
                 let distance_recip = to_neighbour.length_recip();
                 separation += -to_neighbour / distance_recip;
             }
@@ -462,7 +464,7 @@ pub fn calculate_velocity(
 }
 
 pub fn draw_debug_lines(
-    query: Query<(&Transform, &Influences)>,
+    query: Query<(&GlobalTransform, &Influences)>,
     mut lines: ResMut<DebugLines>,
     configuration: Res<Configuration>,
 ) {
@@ -492,8 +494,8 @@ pub fn draw_debug_lines(
                 let line_graphics_scale = 50.0;
                 let offset = influence.cross(Vec3::Z) * offset_degree;
                 lines.line_colored(
-                    transform.translation + Vec3::Z,
-                    transform.translation + influence * line_graphics_scale + Vec3::Z + offset,
+                    transform.translation() + Vec3::Z,
+                    transform.translation() + influence * line_graphics_scale + Vec3::Z + offset,
                     0.0,
                     color,
                 );

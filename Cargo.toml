@@ -12,7 +12,8 @@ bevy-inspector-egui = "0.17.0"
 bevy_prototype_debug_lines = "0.9.0"
 rand = "0.8.5"
 rand_distr = "0.4.3"
-bevy-yoleck = { git = "https://github.com/ZeeQyu/bevy-yoleck", rev = "b01a40dbc9afc7fb36026ef376d21cddfb660d91", features = ["vpeol_2d"] }
+#bevy-yoleck = { path = "../bevy-yoleck", features = ["vpeol_2d"] }
+bevy-yoleck = { git = "https://github.com/ZeeQyu/bevy-yoleck", rev = "49fef034a80ff78869769af5fb73fa73650fcc47", features = ["vpeol_2d"] }
 iyes_loopless = "0.9.1"
 serde = "1.0.152"
 serde_json = "1.0.93"

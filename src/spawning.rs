@@ -16,15 +16,8 @@ pub fn setup(
 
     animation::load_sprite_sheets(asset_server, &mut texture_atlases, &mut config.animation);
 
-    commands.spawn(PlayerBundle::new(&config.animation.player, Vec3::new(-400.0, 0.0, 0.0)));
-    let distribution = Normal::new(0.0, 150.0).unwrap();
-    for _ in 0..40 {
-        let x = distribution.sample(&mut rand::thread_rng());
-        let y = distribution.sample(&mut rand::thread_rng());
-        commands.spawn(SheepBundle::new(&config.animation.sheep, Vec3::new(x, y, 0.0)));
-    }
-    let distribution = Uniform::new(-600.0, 600.0);
-    for _ in 0..100 {
+    let distribution = Uniform::new(-1000.0, 1000.0);
+    for _ in 0..300 {
         let x = distribution.sample(&mut rand::thread_rng());
         let y = distribution.sample(&mut rand::thread_rng());
         commands.spawn(GrassBundle::new(&config.animation.grass, Vec3::new(x, y, 0.0)));

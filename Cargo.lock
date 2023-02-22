@@ -270,7 +270,7 @@ dependencies = [
 [[package]]
 name = "bevy-yoleck"
 version = "0.4.1"
-source = "git+https://github.com/ZeeQyu/bevy-yoleck?rev=b01a40dbc9afc7fb36026ef376d21cddfb660d91#b01a40dbc9afc7fb36026ef376d21cddfb660d91"
+source = "git+https://github.com/ZeeQyu/bevy-yoleck?rev=49fef034a80ff78869769af5fb73fa73650fcc47#49fef034a80ff78869769af5fb73fa73650fcc47"
 dependencies = [
  "anyhow",
  "bevy",
