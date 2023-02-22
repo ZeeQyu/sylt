@@ -137,6 +137,12 @@ impl AnimationSet {
             }
         }
     }
+    fn get_num_textures(self: &Self) -> usize {
+        self.atlas_tile_columns * self.atlas_tile_rows
+    }
+    fn clamp_index(self: &Self, index: usize) -> usize {
+        std::cmp::min(self.get_num_textures() - 1, index)
+    }
 }
 
 #[derive(Reflect, Resource, InspectorOptions)]
@@ -215,7 +221,6 @@ pub fn load_sprite_sheets(asset_server: Res<AssetServer>, texture_atlases: &mut 
 pub struct AnimationBundle {
     sprite_sheet: SpriteSheetBundle,
     animation_timer: AnimationTimer,
-    indices: AnimationIndices,
     states: AnimationStates,
 }
 
@@ -230,7 +235,7 @@ impl AnimationBundle {
                 texture_atlas: config_set.sprite_sheet_handle.clone().expect(
                     &format!("all sprite sheets should be loaded for the game to run, missing {}", config_set.sprite_sheet)),
                 sprite: TextureAtlasSprite {
-                    index: default_animation.first_index,
+                    index: config_set.clamp_index(default_animation.first_index),
                     custom_size: Some(config_set.texture_size * config_set.scale),
                     ..default()
                 },
@@ -238,16 +243,9 @@ impl AnimationBundle {
                 ..default()
             },
             animation_timer: AnimationTimer(Timer::from_seconds(default_animation.animation_interval, TimerMode::Repeating)),
-            indices: AnimationIndices { first: default_animation.first_index, last: default_animation.last_index },
             states: AnimationStates::default(),
         }
     }
-}
-
-#[derive(Component)]
-pub struct AnimationIndices {
-    first: usize,
-    last: usize,
 }
 
 #[derive(Component, Deref, DerefMut)]
@@ -258,7 +256,6 @@ pub fn animate_sprite(
         &mut TextureAtlasSprite,
         &mut AnimationTimer,
         &mut AnimationStates,
-        &mut AnimationIndices,
         &ConfigurationSetId,
         Option<&Velocity>,
     )>,
@@ -269,7 +266,6 @@ pub fn animate_sprite(
         mut sprite,
         mut timer,
         mut states,
-        mut indices,
         config_id,
         velocity
     ) in query.iter_mut() {
@@ -294,28 +290,30 @@ pub fn animate_sprite(
                 _ => {}
             }
         }
+        let set = config.animation.get_set(config_id);
+        let next_anim_config = set.get_anim(states.next);
         if timer.just_finished() || config_set.snappy_animations {
             if states.current != states.next {
                 let animation = config_set.get_anim(states.next);
                 let animation_interval = if animation.animation_interval == 0.0 { 0.3 } else { animation.animation_interval };
                 timer.set_elapsed(Duration::from_secs_f32(0.0));
-                timer.set_duration(Duration::from_secs_f32(animation_interval));
-                indices.first = animation.first_index;
-                indices.last = animation.last_index;
-                sprite.index = indices.first;
+                timer.set_duration(Duration::try_from_secs_f32(animation_interval).unwrap_or(Duration::from_secs(1)));
+                sprite.index = set.clamp_index(next_anim_config.first_index);
                 states.current = states.next;
             }
             if sprite.flip_x != states.next_flip {
                 sprite.flip_x = states.next_flip
             }
         }
+        let current_anim_config = set.get_anim(states.current);
         timer.tick(time.delta());
         if timer.just_finished() {
-            sprite.index = if sprite.index == indices.last {
-                indices.first
+            let sprite_index = if sprite.index == current_anim_config.last_index {
+                current_anim_config.first_index
             } else {
                 sprite.index + 1
-            }
+            };
+            sprite.index = set.clamp_index(sprite_index)
         }
     }
 }
