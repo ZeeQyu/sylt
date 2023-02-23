@@ -64,6 +64,38 @@ impl AnimationConfiguration {
                     },
                 },
             },
+            fence_horizontal: AnimationSet {
+                sprite_sheet: String::from("wall_horizontal.png"),
+                sprite_sheet_handle: None,
+                atlas_tile_columns: 1,
+                atlas_tile_rows: 1,
+                texture_size: Vec2::new(19.0, 8.0),
+                scale: Vec2::new(2.0, 2.0),
+                snappy_animations: false,
+                animation_class: AnimationClass::Simple {
+                    simple: SingleAnimation {
+                        animation_interval: 1.0,
+                        first_index: 0,
+                        last_index: 0,
+                    },
+                },
+            },
+            fence_vertical: AnimationSet {
+                sprite_sheet: String::from("fence_vertical.png"),
+                sprite_sheet_handle: None,
+                atlas_tile_columns: 1,
+                atlas_tile_rows: 1,
+                texture_size: Vec2::new(2.0, 26.0),
+                scale: Vec2::new(2.0, 2.0),
+                snappy_animations: false,
+                animation_class: AnimationClass::Simple {
+                    simple: SingleAnimation {
+                        animation_interval: 1.0,
+                        first_index: 0,
+                        last_index: 0,
+                    },
+                },
+            },
             grass: AnimationSet {
                 sprite_sheet: String::from("spritesheet.png"),
                 sprite_sheet_handle: None,
@@ -82,7 +114,7 @@ impl AnimationConfiguration {
             },
         }
     }
-    fn get_set<'a>(self: &'a Self, id: &ConfigurationSetId) -> &'a AnimationSet {
+    pub fn get_set<'a>(self: &'a Self, id: &ConfigurationSetId) -> &'a AnimationSet {
         match id {
             ConfigurationSetId::Player => {
                 &self.player
@@ -93,6 +125,12 @@ impl AnimationConfiguration {
             ConfigurationSetId::Grass => {
                 &self.grass
             }
+            ConfigurationSetId::FenceHorizontal => {
+                &self.fence_horizontal
+            }
+            ConfigurationSetId::FenceVertical => {
+                &self.fence_vertical
+            }
         }
     }
 }
@@ -102,6 +140,8 @@ impl AnimationConfiguration {
 pub struct AnimationConfiguration {
     pub player: AnimationSet,
     pub sheep: AnimationSet,
+    pub fence_horizontal: AnimationSet,
+    pub fence_vertical: AnimationSet,
     pub grass: AnimationSet,
 }
 
@@ -117,7 +157,7 @@ pub struct AnimationSet {
     #[reflect(ignore)]
     atlas_tile_rows: usize,
     #[reflect(ignore)]
-    texture_size: Vec2,
+    pub texture_size: Vec2,
     #[reflect(ignore)]
     scale: Vec2,
     snappy_animations: bool,
@@ -213,6 +253,8 @@ pub fn load_sprite_sheets(asset_server: Res<AssetServer>, texture_atlases: &mut 
     load!(player, running);
     load!(sheep, idle);
     load!(sheep, running);
+    load!(fence_horizontal, simple);
+    load!(fence_vertical, simple);
     load!(grass, simple);
 }
 

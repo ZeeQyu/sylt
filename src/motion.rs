@@ -63,7 +63,7 @@ impl Configuration {
             ConfigurationSetId::Sheep => {
                 &self.sheep
             }
-            ConfigurationSetId::Grass => {
+            _ => {
                 &self.sheep
             }
         }

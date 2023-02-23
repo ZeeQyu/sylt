@@ -1,16 +1,15 @@
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 use bevy_yoleck::vpeol_2d::{yoleck_vpeol_position_edit_adapter, YoleckVpeolTransform2dProjection};
-use bevy_yoleck::{egui, YoleckEdit, YoleckEditorEvent, YoleckEditorState, YoleckEntryHeader, YoleckExtForApp, YoleckPopulate, YoleckRawEntry, YoleckState, YoleckSyncWithEditorState, YoleckTypeHandler};
+use bevy_yoleck::{egui, YoleckEdit, YoleckEditorEvent, YoleckEditorState, YoleckEntryHeader, YoleckExtForApp, YoleckPopulate, YoleckRawEntry, YoleckState, YoleckTypeHandler};
 use bevy_yoleck::vpeol::YoleckWillContainClickableChildren;
 use iyes_loopless::prelude::*;
 use rand::distributions::Distribution;
 use rand_distr::Normal;
-use rand_distr::num_traits::Signed;
 use crate::{GameState, motion, spawning};
 use serde::Serialize;
 use serde::Deserialize;
-use crate::spawning::SheepBundle;
+use crate::spawning::FenceOrientation;
 
 #[derive(Default)]
 pub struct EditorPlugin;
@@ -18,6 +17,7 @@ pub struct EditorPlugin;
 const PLAYER_NAME: &str = "Player";
 const SHEEP_NAME: &str = "Sheep";
 const SHEEP_CLUSTER_NAME: &str = "SheepCluster";
+const FENCE_NAME: &str = "Fence";
 
 impl Plugin for EditorPlugin {
     fn build(&self, app: &mut App) {
@@ -58,6 +58,16 @@ impl Plugin for EditorPlugin {
                 .populate_with(populate_sheep_cluster)
                 .edit_with(edit_sheep_cluster)
                 .with(yoleck_vpeol_position_edit_adapter(|data: &mut EditorSheepCluster| {
+                    YoleckVpeolTransform2dProjection {
+                        translation: &mut data.position,
+                    }
+                }))
+        });
+        app.add_yoleck_handler({
+            YoleckTypeHandler::<EditorFence>::new(FENCE_NAME)
+                .populate_with(populate_fence)
+                .edit_with(edit_fence)
+                .with(yoleck_vpeol_position_edit_adapter(|data: &mut EditorFence| {
                     YoleckVpeolTransform2dProjection {
                         translation: &mut data.position,
                     }
@@ -129,6 +139,7 @@ struct EditorPlayer {
     #[serde(default)]
     position: Vec2,
 }
+
 fn populate_player(mut populate: YoleckPopulate<EditorPlayer>, configuration: Res<motion::Configuration>) {
     populate.populate(|_ctx, data, mut commands| {
         commands.insert(spawning::PlayerBundle::new(&configuration.animation.player, data.position.extend(0.0)));
@@ -148,7 +159,7 @@ fn populate_sheep(mut populate: YoleckPopulate<EditorSheep>, configuration: Res<
 }
 
 fn edit_sheep(mut edit: YoleckEdit<EditorSheep>, mut commands: Commands, mut writer: EventWriter<YoleckEditorEvent>, mut yoleck: ResMut<YoleckState>) {
-    edit.edit(|ctx, data, ui| {
+    edit.edit(|_ctx, data, ui| {
         if ui.add(egui::Button::new("Dolly!")).clicked() {
             let cmd = commands.spawn(YoleckRawEntry {
                 header: YoleckEntryHeader {
@@ -213,8 +224,8 @@ fn populate_sheep_cluster(
     });
 }
 
-fn edit_sheep_cluster(mut edit: YoleckEdit<EditorSheepCluster>, mut commands: Commands) {
-    edit.edit(|ctx, data, ui| {
+fn edit_sheep_cluster(mut edit: YoleckEdit<EditorSheepCluster>) {
+    edit.edit(|_ctx, data, ui| {
         ui.horizontal(|ui| {
             ui.add(egui::Label::new("Num sheep"));
             ui.add(egui::DragValue::new(&mut data.num_sheep));
@@ -262,4 +273,39 @@ fn show_clusters(mut query: Query<&mut Visibility, With<IsCluster>>) {
     }
 }
 
-// fn edit_rectangle(mut edit: YoleckEdit<Rectangle>, mut commands: Commands) {
+#[derive(Clone, PartialEq, Serialize, Deserialize)]
+struct EditorFence {
+    #[serde(default)]
+    position: Vec2,
+    #[serde(default)]
+    orientation: FenceOrientation,
+}
+
+fn populate_fence(
+    mut populate: YoleckPopulate<EditorFence>,
+    configuration: Res<motion::Configuration>,
+) {
+    populate.populate(|_ctx, data, mut commands| {
+        commands.insert(spawning::FenceBundle::new(&configuration.animation, &data.orientation, data.position.extend(0.0)));
+    });
+}
+
+fn edit_fence(mut edit: YoleckEdit<EditorFence>) {
+    edit.edit(|_ctx, data, ui| {
+        ui.horizontal(|ui| {
+            {
+                let orientation = FenceOrientation::Horizontal;
+                if ui.add_enabled(data.orientation != orientation, egui::Button::new("Horizontal")).clicked() {
+                    data.orientation = orientation
+                }
+            }
+            {
+                let orientation = FenceOrientation::Vertical;
+                if ui.add_enabled(data.orientation != orientation, egui::Button::new("Vertical")).clicked() {
+                    data.orientation = orientation
+                }
+            }
+        });
+    });
+}
+

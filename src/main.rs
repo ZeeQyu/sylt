@@ -3,13 +3,11 @@ mod motion;
 mod animation;
 mod editor;
 
-use std::time::Duration;
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 use crate::motion::{apply_player_input, calculate_flocking, calculate_grazing, calculate_inertia, calculate_velocity, Configuration, draw_debug_lines, find_flocking_neighbours, reset_influences, run_from_players};
 use bevy_prototype_debug_lines::*;
 use bevy_inspector_egui::quick as inspector_egui;
-use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 use iyes_loopless::prelude::*;
 
 // const TIME_STEP: f32 = 1.0 / 60.0;
@@ -99,6 +97,8 @@ enum GameState {
 pub enum ConfigurationSetId {
     Player,
     Sheep,
+    FenceHorizontal,
+    FenceVertical,
     Grass,
 }
 

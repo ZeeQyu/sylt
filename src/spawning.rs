@@ -1,10 +1,11 @@
-use bevy::ecs::system::EntityCommands;
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
-use rand_distr::{Normal, Uniform, Distribution};
+use rand_distr::{Uniform, Distribution};
 use crate::{animation, ConfigurationSetId};
 use crate::animation::AnimationBundle;
 use crate::motion::{Configuration, Flocking, Grazing, Inertia, Influences, PlayerInput, Runner};
+use serde::Serialize;
+use serde::Deserialize;
 
 pub fn setup(
     mut commands: Commands,
@@ -93,6 +94,44 @@ impl SheepBundle {
             name: Name::new("Sheep"),
             config_set_id: ConfigurationSetId::Sheep,
             inertia: Inertia::default(),
+        }
+    }
+}
+
+#[derive(Default, Clone, PartialEq, Serialize, Deserialize)]
+pub enum FenceOrientation {
+    #[default]
+    Horizontal,
+    Vertical,
+}
+
+#[derive(Bundle)]
+pub struct FenceBundle {
+    animation_bundle: AnimationBundle,
+    collider: Collider,
+    rigid_body: RigidBody,
+    name: Name,
+    config_set_id: ConfigurationSetId,
+}
+
+impl FenceBundle {
+    pub fn new(config: &animation::AnimationConfiguration, fence_orientation: &FenceOrientation, position: Vec3) -> Self {
+        // let (config_set_id, dimensions)= match fence_orientation {
+        //     FenceOrientation::Horizontal => { (ConfigurationSetId::FenceHorizontal, Vec2::new(5.0, 2.0) )}
+        //     FenceOrientation::Vertical => { (ConfigurationSetId::FenceVertical, Vec2::new(2.0, 5.0)) }
+        // };
+        let config_set_id= match fence_orientation {
+            FenceOrientation::Horizontal => { ConfigurationSetId::FenceHorizontal }
+            FenceOrientation::Vertical => { ConfigurationSetId::FenceVertical }
+        };
+        let config_set = config.get_set(&config_set_id);
+        let dimensions = config_set.texture_size;
+            FenceBundle {
+            animation_bundle: AnimationBundle::from(config_set, position),
+            collider: Collider::cuboid(dimensions.x, dimensions.y),
+            rigid_body: RigidBody::Fixed,
+            name: Name::new("Fence"),
+            config_set_id,
         }
     }
 }
