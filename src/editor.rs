@@ -1,16 +1,14 @@
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 use bevy_yoleck::vpeol_2d::{yoleck_vpeol_position_edit_adapter, YoleckVpeolTransform2dProjection};
-use bevy_yoleck::{egui, YoleckEdit, YoleckEditorEvent, YoleckEditorState, YoleckEntryHeader, YoleckExtForApp, YoleckPopulate, YoleckRawEntry, YoleckState, YoleckSyncWithEditorState, YoleckTypeHandler};
+use bevy_yoleck::{egui, YoleckEdit, YoleckEditorEvent, YoleckEditorState, YoleckEntryHeader, YoleckExtForApp, YoleckPopulate, YoleckRawEntry, YoleckState, YoleckTypeHandler};
 use bevy_yoleck::vpeol::YoleckWillContainClickableChildren;
 use iyes_loopless::prelude::*;
 use rand::distributions::Distribution;
 use rand_distr::Normal;
-use rand_distr::num_traits::Signed;
 use crate::{GameState, motion, spawning};
 use serde::Serialize;
 use serde::Deserialize;
-use crate::spawning::SheepBundle;
 
 #[derive(Default)]
 pub struct EditorPlugin;
@@ -148,7 +146,7 @@ fn populate_sheep(mut populate: YoleckPopulate<EditorSheep>, configuration: Res<
 }
 
 fn edit_sheep(mut edit: YoleckEdit<EditorSheep>, mut commands: Commands, mut writer: EventWriter<YoleckEditorEvent>, mut yoleck: ResMut<YoleckState>) {
-    edit.edit(|ctx, data, ui| {
+    edit.edit(|_ctx, data, ui| {
         if ui.add(egui::Button::new("Dolly!")).clicked() {
             let cmd = commands.spawn(YoleckRawEntry {
                 header: YoleckEntryHeader {
@@ -213,8 +211,8 @@ fn populate_sheep_cluster(
     });
 }
 
-fn edit_sheep_cluster(mut edit: YoleckEdit<EditorSheepCluster>, mut commands: Commands) {
-    edit.edit(|ctx, data, ui| {
+fn edit_sheep_cluster(mut edit: YoleckEdit<EditorSheepCluster>) {
+    edit.edit(|_ctx, data, ui| {
         ui.horizontal(|ui| {
             ui.add(egui::Label::new("Num sheep"));
             ui.add(egui::DragValue::new(&mut data.num_sheep));

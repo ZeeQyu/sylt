@@ -4,6 +4,7 @@ use bevy_inspector_egui::prelude::*;
 use crate::{ConfigurationSetId};
 use crate::motion::Configuration;
 use std::time::Duration;
+use crate::assets::GameAssets;
 
 // #[derive(Default)]
 // pub struct AnimationPlugin;
@@ -18,8 +19,6 @@ impl AnimationConfiguration {
     pub fn new() -> Self {
         Self {
             player: AnimationSet {
-                sprite_sheet: String::from("Collie-run-sheet.png"),
-                sprite_sheet_handle: None,
                 atlas_tile_columns: 2,
                 atlas_tile_rows: 1,
                 texture_size: Vec2::new(20.0, 16.0),
@@ -42,8 +41,6 @@ impl AnimationConfiguration {
             },
 
             sheep: AnimationSet {
-                sprite_sheet: String::from("Sheep-sheet.png"),
-                sprite_sheet_handle: None,
                 atlas_tile_columns: 4,
                 atlas_tile_rows: 1,
                 texture_size: Vec2::new(16.0, 16.0),
@@ -65,8 +62,6 @@ impl AnimationConfiguration {
                 },
             },
             grass: AnimationSet {
-                sprite_sheet: String::from("spritesheet.png"),
-                sprite_sheet_handle: None,
                 atlas_tile_columns: 4,
                 atlas_tile_rows: 4,
                 texture_size: Vec2::new(16.0, 16.0),
@@ -108,10 +103,6 @@ pub struct AnimationConfiguration {
 #[derive(Reflect, Default, Resource, InspectorOptions)]
 #[reflect(Resource, InspectorOptions)]
 pub struct AnimationSet {
-    #[reflect(ignore)]
-    sprite_sheet: String,
-    #[reflect(ignore)]
-    sprite_sheet_handle: Option<Handle<TextureAtlas>>,
     #[reflect(ignore)]
     atlas_tile_columns: usize,
     #[reflect(ignore)]
@@ -193,29 +184,29 @@ enum AnimationType {
     Running,
 }
 
-pub fn load_sprite_sheets(asset_server: Res<AssetServer>, texture_atlases: &mut ResMut<Assets<TextureAtlas>>, anim_config: &mut AnimationConfiguration) {
-    macro_rules! load {
-        ($name:ident, $anim:ident) => {
-            let texture_handle = asset_server.load(&anim_config.$name.sprite_sheet);
-            let texture_atlas = TextureAtlas::from_grid(
-                texture_handle,
-                anim_config.$name.texture_size,
-                anim_config.$name.atlas_tile_columns,
-                anim_config.$name.atlas_tile_rows,
-                None,
-                None,
-            );
-            let texture_atlas_handle = texture_atlases.add(texture_atlas);
-            anim_config.$name.sprite_sheet_handle = Some(texture_atlas_handle);
-        };
-    }
-    load!(player, idle);
-    load!(player, running);
-    load!(sheep, idle);
-    load!(sheep, running);
-    load!(grass, simple);
-}
-
+// pub fn load_sprite_sheets(assets: Res<GameAssets>, texture_atlases: &mut ResMut<Assets<TextureAtlas>>, anim_config: &mut AnimationConfiguration) {
+//     macro_rules! load {
+//         ($name:ident, $anim:ident) => {
+//             let texture_handle = asset_server.load(&anim_config.$name.sprite_sheet);
+//             let texture_atlas = TextureAtlas::from_grid(
+//                 texture_handle,
+//                 anim_config.$name.texture_size,
+//                 anim_config.$name.atlas_tile_columns,
+//                 anim_config.$name.atlas_tile_rows,
+//                 None,
+//                 None,
+//             );
+//             let texture_atlas_handle = texture_atlases.add(texture_atlas);
+//             anim_config.$name.sprite_sheet_handle = Some(texture_atlas_handle);
+//         };
+//     }
+//     load!(player, idle);
+//     load!(player, running);
+//     load!(sheep, idle);
+//     load!(sheep, running);
+//     load!(grass, simple);
+// }
+//
 
 #[derive(Bundle)]
 pub struct AnimationBundle {
@@ -225,15 +216,25 @@ pub struct AnimationBundle {
 }
 
 impl AnimationBundle {
-    pub fn from(config_set: &AnimationSet, position: Vec3) -> Self {
+    pub fn from(config_set: &AnimationSet, position: Vec3, texture_atlas: Handle<TextureAtlas>) -> Self {
         let default_animation = match &config_set.animation_class {
             AnimationClass::Simple { simple } => { simple }
             AnimationClass::Actor { idle, .. } => { idle }
         };
+//             let texture_atlas = TextureAtlas::from_grid(
+//                 texture_handle,
+//                 anim_config.$name.texture_size,
+//                 anim_config.$name.atlas_tile_columns,
+//                 anim_config.$name.atlas_tile_rows,
+//                 None,
+//                 None,
+//             );
+//             let texture_atlas_handle = texture_atlases.add(texture_atlas);
+//             anim_config.$name.sprite_sheet_handle = Some(texture_atlas_handle);
+
         Self {
             sprite_sheet: SpriteSheetBundle {
-                texture_atlas: config_set.sprite_sheet_handle.clone().expect(
-                    &format!("all sprite sheets should be loaded for the game to run, missing {}", config_set.sprite_sheet)),
+                texture_atlas,
                 sprite: TextureAtlasSprite {
                     index: config_set.clamp_index(default_animation.first_index),
                     custom_size: Some(config_set.texture_size * config_set.scale),

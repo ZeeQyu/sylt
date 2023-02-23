@@ -1,9 +1,9 @@
-use bevy::ecs::system::EntityCommands;
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
-use rand_distr::{Normal, Uniform, Distribution};
+use rand_distr::{Uniform, Distribution};
 use crate::{animation, ConfigurationSetId};
 use crate::animation::AnimationBundle;
+use crate::assets::GameAssets;
 use crate::motion::{Configuration, Flocking, Grazing, Inertia, Influences, PlayerInput, Runner};
 
 pub fn setup(
@@ -14,7 +14,7 @@ pub fn setup(
 ) {
     commands.spawn(Camera2dBundle::default());
 
-    animation::load_sprite_sheets(asset_server, &mut texture_atlases, &mut config.animation);
+    // animation::load_sprite_sheets(asset_server, &mut texture_atlases, &mut config.animation);
 
     let distribution = Uniform::new(-1000.0, 1000.0);
     for _ in 0..300 {
@@ -26,7 +26,6 @@ pub fn setup(
 
 #[derive(Bundle)]
 pub struct Actor {
-    animation_bundle: animation::AnimationBundle,
     collider: Collider,
     rigid_body: RigidBody,
     locked_axes: LockedAxes,
@@ -37,7 +36,6 @@ pub struct Actor {
 impl Actor {
     fn new(config_set: &animation::AnimationSet, position: Vec3, collider: Collider) -> Self {
         Actor {
-            animation_bundle: animation::AnimationBundle::from(config_set, position),
             //collider: Collider::ball(15.0),
             rigid_body: RigidBody::Dynamic,
             locked_axes: LockedAxes::ROTATION_LOCKED,
@@ -51,6 +49,7 @@ impl Actor {
 #[derive(Bundle)]
 pub struct PlayerBundle {
     actor: Actor,
+    animation: AnimationBundle,
     player: PlayerInput,
     dominance: Dominance,
     name: Name,
@@ -58,9 +57,10 @@ pub struct PlayerBundle {
 }
 
 impl PlayerBundle {
-    pub fn new(config_set: &animation::AnimationSet, position: Vec3) -> Self {
+    pub fn new(assets: Res<GameAssets>, config_set: &animation::AnimationSet, position: Vec3) -> Self {
         PlayerBundle {
             actor: Actor::new(config_set, position, Collider::ball(15.0)),
+            animation: animation::AnimationBundle::from(config_set, position, assets.player_sheet),
             player: PlayerInput {},
             dominance: Dominance::group(10),
             name: Name::new("Player"),
@@ -72,6 +72,7 @@ impl PlayerBundle {
 #[derive(Bundle)]
 pub struct SheepBundle {
     actor: Actor,
+    animation: AnimationBundle,
     flocking: Flocking,
     grazing: Grazing,
     runner: Runner,
@@ -84,6 +85,7 @@ impl SheepBundle {
     pub fn new(config_set: &animation::AnimationSet, position: Vec3) -> Self {
         SheepBundle {
             actor: Actor::new(config_set, position, Collider::ball(13.0)),
+            animation: animation::AnimationBundle::from(config_set, position),
             flocking: Flocking::default(),
             grazing: Grazing {
                 current_direction: None,
