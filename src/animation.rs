@@ -14,6 +14,8 @@ use std::time::Duration;
 //     }
 // }
 
+pub const GLOBAL_TEXTURE_SCALE: f32 = 2.0;
+
 impl AnimationConfiguration {
     pub fn new() -> Self {
         Self {
@@ -23,7 +25,6 @@ impl AnimationConfiguration {
                 atlas_tile_columns: 2,
                 atlas_tile_rows: 1,
                 texture_size: Vec2::new(20.0, 16.0),
-                scale: Vec2::new(2.0, 2.0),
                 snappy_animations: true,
                 animation_class: AnimationClass::Actor {
                     run_threshold_fraction: 0.3,
@@ -47,7 +48,6 @@ impl AnimationConfiguration {
                 atlas_tile_columns: 4,
                 atlas_tile_rows: 1,
                 texture_size: Vec2::new(16.0, 16.0),
-                scale: Vec2::new(2.0, 2.0),
                 snappy_animations: false,
                 animation_class: AnimationClass::Actor {
                     run_threshold_fraction: 0.3,
@@ -70,7 +70,6 @@ impl AnimationConfiguration {
                 atlas_tile_columns: 1,
                 atlas_tile_rows: 1,
                 texture_size: Vec2::new(19.0, 8.0),
-                scale: Vec2::new(2.0, 2.0),
                 snappy_animations: false,
                 animation_class: AnimationClass::Simple {
                     simple: SingleAnimation {
@@ -81,12 +80,11 @@ impl AnimationConfiguration {
                 },
             },
             fence_vertical: AnimationSet {
-                sprite_sheet: String::from("fence_vertical.png"),
+                sprite_sheet: String::from("Fence_vertical.png"),
                 sprite_sheet_handle: None,
                 atlas_tile_columns: 1,
                 atlas_tile_rows: 1,
                 texture_size: Vec2::new(2.0, 26.0),
-                scale: Vec2::new(2.0, 2.0),
                 snappy_animations: false,
                 animation_class: AnimationClass::Simple {
                     simple: SingleAnimation {
@@ -102,7 +100,6 @@ impl AnimationConfiguration {
                 atlas_tile_columns: 4,
                 atlas_tile_rows: 4,
                 texture_size: Vec2::new(16.0, 16.0),
-                scale: Vec2::new(2.0, 2.0),
                 snappy_animations: false,
                 animation_class: AnimationClass::Simple {
                     simple: SingleAnimation {
@@ -158,8 +155,6 @@ pub struct AnimationSet {
     atlas_tile_rows: usize,
     #[reflect(ignore)]
     pub texture_size: Vec2,
-    #[reflect(ignore)]
-    scale: Vec2,
     snappy_animations: bool,
     // Should we change animations frame-perfectly or wait until the next?
     animation_class: AnimationClass,
@@ -278,7 +273,7 @@ impl AnimationBundle {
                     &format!("all sprite sheets should be loaded for the game to run, missing {}", config_set.sprite_sheet)),
                 sprite: TextureAtlasSprite {
                     index: config_set.clamp_index(default_animation.first_index),
-                    custom_size: Some(config_set.texture_size * config_set.scale),
+                    custom_size: Some(config_set.texture_size * GLOBAL_TEXTURE_SCALE),
                     ..default()
                 },
                 transform: Transform::from_translation(position),

@@ -19,13 +19,15 @@ fn main() {
             .set(WindowPlugin {
                 window: WindowDescriptor {
                     title: String::from("Sylt"),
+                    width: 1600.0,
+                    height: 1000.0,
                     ..default()
                 },
                 ..default()
             }))
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(30.0))
         .add_plugin(bevy_yoleck::bevy_egui::EguiPlugin)
-        .add_plugin(inspector_egui::WorldInspectorPlugin)
+        // .add_plugin(inspector_egui::WorldInspectorPlugin)
         .add_plugin(DebugLinesPlugin::default())
         .add_plugin(inspector_egui::ResourceInspectorPlugin::<Configuration>::default())
         // .add_fixed_timestep(Duration::from_millis(16),
