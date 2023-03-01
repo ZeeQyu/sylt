@@ -20,7 +20,7 @@ impl AnimationConfiguration {
     pub fn new() -> Self {
         Self {
             player: AnimationSheet {
-                sprite_sheet: String::from("Collie-sheet.png"),
+                sprite_sheet: String::from("collie_sheet.png"),
                 sprite_sheet_handle: None,
                 atlas_tile_columns: 4,
                 atlas_tile_rows: 4,
@@ -43,7 +43,7 @@ impl AnimationConfiguration {
             },
 
             sheep: AnimationSheet {
-                sprite_sheet: String::from("Sheep-sheet.png"),
+                sprite_sheet: String::from("sheep_sheet.png"),
                 sprite_sheet_handle: None,
                 atlas_tile_columns: 6,
                 atlas_tile_rows: 3,
@@ -65,7 +65,7 @@ impl AnimationConfiguration {
                 },
             },
             fence_horizontal: AnimationSheet {
-                sprite_sheet: String::from("wall_horizontal.png"),
+                sprite_sheet: String::from("fence_horizontal.png"),
                 sprite_sheet_handle: None,
                 atlas_tile_columns: 1,
                 atlas_tile_rows: 1,
@@ -80,7 +80,7 @@ impl AnimationConfiguration {
                 },
             },
             fence_vertical: AnimationSheet {
-                sprite_sheet: String::from("Fence_vertical.png"),
+                sprite_sheet: String::from("fence_vertical.png"),
                 sprite_sheet_handle: None,
                 atlas_tile_columns: 1,
                 atlas_tile_rows: 1,
