@@ -36,7 +36,7 @@ pub struct Actor {
 }
 
 impl Actor {
-    fn new(config_set: &animation::AnimationSet, position: Vec3, collider: Collider) -> Self {
+    fn new(config_set: &animation::AnimationSheet, position: Vec3, collider: Collider) -> Self {
         Actor {
             animation_bundle: animation::AnimationBundle::from(config_set, position),
             //collider: Collider::ball(15.0),
@@ -53,17 +53,15 @@ impl Actor {
 pub struct PlayerBundle {
     actor: Actor,
     player: PlayerInput,
-    dominance: Dominance,
     name: Name,
     config_set_id: ConfigurationSetId,
 }
 
 impl PlayerBundle {
-    pub fn new(config_set: &animation::AnimationSet, position: Vec3) -> Self {
+    pub fn new(config_set: &animation::AnimationSheet, position: Vec3) -> Self {
         PlayerBundle {
             actor: Actor::new(config_set, position, Collider::ball(15.0)),
             player: PlayerInput {},
-            dominance: Dominance::group(10),
             name: Name::new("Player"),
             config_set_id: ConfigurationSetId::Player,
         }
@@ -82,7 +80,7 @@ pub struct SheepBundle {
 }
 
 impl SheepBundle {
-    pub fn new(config_set: &animation::AnimationSet, position: Vec3) -> Self {
+    pub fn new(config_set: &animation::AnimationSheet, position: Vec3) -> Self {
         SheepBundle {
             actor: Actor::new(config_set, position, Collider::ball(13.0)),
             flocking: Flocking::default(),
@@ -144,7 +142,7 @@ pub struct GrassBundle {
 }
 
 impl GrassBundle {
-    pub fn new(config_set: &animation::AnimationSet, position: Vec3) -> Self {
+    pub fn new(config_set: &animation::AnimationSheet, position: Vec3) -> Self {
         GrassBundle {
             animation_bundle: AnimationBundle::from(config_set, position),
             name: Name::new("Grass"),

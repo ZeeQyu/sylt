@@ -19,7 +19,7 @@ pub const GLOBAL_TEXTURE_SCALE: f32 = 2.0;
 impl AnimationConfiguration {
     pub fn new() -> Self {
         Self {
-            player: AnimationSet {
+            player: AnimationSheet {
                 sprite_sheet: String::from("Collie-run-sheet.png"),
                 sprite_sheet_handle: None,
                 atlas_tile_columns: 2,
@@ -42,7 +42,7 @@ impl AnimationConfiguration {
                 },
             },
 
-            sheep: AnimationSet {
+            sheep: AnimationSheet {
                 sprite_sheet: String::from("Sheep-sheet.png"),
                 sprite_sheet_handle: None,
                 atlas_tile_columns: 4,
@@ -64,7 +64,7 @@ impl AnimationConfiguration {
                     },
                 },
             },
-            fence_horizontal: AnimationSet {
+            fence_horizontal: AnimationSheet {
                 sprite_sheet: String::from("wall_horizontal.png"),
                 sprite_sheet_handle: None,
                 atlas_tile_columns: 1,
@@ -79,7 +79,7 @@ impl AnimationConfiguration {
                     },
                 },
             },
-            fence_vertical: AnimationSet {
+            fence_vertical: AnimationSheet {
                 sprite_sheet: String::from("Fence_vertical.png"),
                 sprite_sheet_handle: None,
                 atlas_tile_columns: 1,
@@ -94,7 +94,7 @@ impl AnimationConfiguration {
                     },
                 },
             },
-            grass: AnimationSet {
+            grass: AnimationSheet {
                 sprite_sheet: String::from("spritesheet.png"),
                 sprite_sheet_handle: None,
                 atlas_tile_columns: 4,
@@ -111,7 +111,7 @@ impl AnimationConfiguration {
             },
         }
     }
-    pub fn get_set<'a>(self: &'a Self, id: &ConfigurationSetId) -> &'a AnimationSet {
+    pub fn get_set<'a>(self: &'a Self, id: &ConfigurationSetId) -> &'a AnimationSheet {
         match id {
             ConfigurationSetId::Player => {
                 &self.player
@@ -135,16 +135,16 @@ impl AnimationConfiguration {
 #[derive(Reflect, Default, Resource, InspectorOptions)]
 #[reflect(Resource, InspectorOptions)]
 pub struct AnimationConfiguration {
-    pub player: AnimationSet,
-    pub sheep: AnimationSet,
-    pub fence_horizontal: AnimationSet,
-    pub fence_vertical: AnimationSet,
-    pub grass: AnimationSet,
+    pub player: AnimationSheet,
+    pub sheep: AnimationSheet,
+    pub fence_horizontal: AnimationSheet,
+    pub fence_vertical: AnimationSheet,
+    pub grass: AnimationSheet,
 }
 
 #[derive(Reflect, Default, Resource, InspectorOptions)]
 #[reflect(Resource, InspectorOptions)]
-pub struct AnimationSet {
+pub struct AnimationSheet {
     #[reflect(ignore)]
     sprite_sheet: String,
     #[reflect(ignore)]
@@ -160,7 +160,7 @@ pub struct AnimationSet {
     animation_class: AnimationClass,
 }
 
-impl AnimationSet {
+impl AnimationSheet {
     fn get_anim(self: &Self, anim: AnimationType) -> &SingleAnimation {
         match &self.animation_class {
             AnimationClass::Simple { simple } => { &simple }
@@ -262,7 +262,7 @@ pub struct AnimationBundle {
 }
 
 impl AnimationBundle {
-    pub fn from(config_set: &AnimationSet, position: Vec3) -> Self {
+    pub fn from(config_set: &AnimationSheet, position: Vec3) -> Self {
         let default_animation = match &config_set.animation_class {
             AnimationClass::Simple { simple } => { simple }
             AnimationClass::Actor { idle, .. } => { idle }
