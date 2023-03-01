@@ -20,10 +20,10 @@ impl AnimationConfiguration {
     pub fn new() -> Self {
         Self {
             player: AnimationSheet {
-                sprite_sheet: String::from("Collie-run-sheet.png"),
+                sprite_sheet: String::from("Collie-sheet.png"),
                 sprite_sheet_handle: None,
-                atlas_tile_columns: 2,
-                atlas_tile_rows: 1,
+                atlas_tile_columns: 4,
+                atlas_tile_rows: 4,
                 texture_size: Vec2::new(20.0, 16.0),
                 snappy_animations: true,
                 animation_class: AnimationClass::Actor {
@@ -32,12 +32,12 @@ impl AnimationConfiguration {
                     idle: SingleAnimation {
                         animation_interval: 0.3,
                         first_index: 0,
-                        last_index: 0,
+                        last_index: 2,
                     },
                     running: SingleAnimation {
                         animation_interval: 0.15,
-                        first_index: 0,
-                        last_index: 1,
+                        first_index: 4,
+                        last_index: 5,
                     },
                 },
             },
@@ -45,8 +45,8 @@ impl AnimationConfiguration {
             sheep: AnimationSheet {
                 sprite_sheet: String::from("Sheep-sheet.png"),
                 sprite_sheet_handle: None,
-                atlas_tile_columns: 4,
-                atlas_tile_rows: 1,
+                atlas_tile_columns: 6,
+                atlas_tile_rows: 3,
                 texture_size: Vec2::new(16.0, 16.0),
                 snappy_animations: false,
                 animation_class: AnimationClass::Actor {
@@ -54,13 +54,13 @@ impl AnimationConfiguration {
                     flip_threshold_fraction: 0.2,
                     idle: SingleAnimation {
                         animation_interval: 0.3,
-                        first_index: 1,
-                        last_index: 1,
+                        first_index: 0,
+                        last_index: 2,
                     },
                     running: SingleAnimation {
-                        animation_interval: 0.25,
-                        first_index: 0,
-                        last_index: 3,
+                        animation_interval: 0.15,
+                        first_index: 7,
+                        last_index: 10,
                     },
                 },
             },
@@ -111,7 +111,7 @@ impl AnimationConfiguration {
             },
         }
     }
-    pub fn get_set<'a>(self: &'a Self, id: &ConfigurationSetId) -> &'a AnimationSheet {
+    pub fn get_set(self: &Self, id: &ConfigurationSetId) -> &AnimationSheet {
         match id {
             ConfigurationSetId::Player => {
                 &self.player
@@ -221,6 +221,9 @@ pub struct AnimationStates {
     next_flip: bool,
 }
 
+#[derive(Component, Default)]
+pub struct RandomInitAnimation;
+
 #[derive(Copy, Clone, PartialEq, Default)]
 enum AnimationType {
     #[default]
@@ -232,7 +235,7 @@ pub fn load_sprite_sheets(asset_server: Res<AssetServer>, texture_atlases: &mut 
     macro_rules! load {
         ($name:ident, $anim:ident) => {
             let texture_handle = asset_server.load(&anim_config.$name.sprite_sheet);
-            let texture_atlas = TextureAtlas::from_grid(
+            let mut texture_atlas = TextureAtlas::from_grid(
                 texture_handle,
                 anim_config.$name.texture_size,
                 anim_config.$name.atlas_tile_columns,
@@ -240,6 +243,10 @@ pub fn load_sprite_sheets(asset_server: Res<AssetServer>, texture_atlases: &mut 
                 None,
                 None,
             );
+            for mut rect in texture_atlas.textures.iter_mut() {
+                rect.min = rect.min - 0.5;
+                rect.max = rect.max - 0.5;
+            }
             let texture_atlas_handle = texture_atlases.add(texture_atlas);
             anim_config.$name.sprite_sheet_handle = Some(texture_atlas_handle);
         };
@@ -256,9 +263,9 @@ pub fn load_sprite_sheets(asset_server: Res<AssetServer>, texture_atlases: &mut 
 
 #[derive(Bundle)]
 pub struct AnimationBundle {
-    sprite_sheet: SpriteSheetBundle,
-    animation_timer: AnimationTimer,
-    states: AnimationStates,
+    pub sprite_sheet: SpriteSheetBundle,
+    pub animation_timer: AnimationTimer,
+    pub states: AnimationStates,
 }
 
 impl AnimationBundle {
@@ -286,7 +293,7 @@ impl AnimationBundle {
 }
 
 #[derive(Component, Deref, DerefMut)]
-pub struct AnimationTimer(Timer);
+pub struct AnimationTimer(pub Timer);
 
 pub fn animate_sprite(
     mut query: Query<(

@@ -305,7 +305,6 @@ fn populate_fence(
             let num_sections = (data.section_length / texture_length) as u32 + 1;
             for i in 0..num_sections {
                 let position = i as f32 * axis * texture_length - 4.0 * i as f32 * axis + Vec3::Z * i as f32;
-                println!("{} {}", i, position);
                 commands.spawn(spawning::FenceBundle::new(
                     &configuration.animation,
                     &data.orientation,

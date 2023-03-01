@@ -1,3 +1,4 @@
+use std::time::Duration;
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 use rand_distr::{Uniform, Distribution};
@@ -27,12 +28,12 @@ pub fn setup(
 
 #[derive(Bundle)]
 pub struct Actor {
-    animation_bundle: animation::AnimationBundle,
-    collider: Collider,
-    rigid_body: RigidBody,
-    locked_axes: LockedAxes,
-    velocity: Velocity,
-    influences: Influences,
+    pub animation_bundle: animation::AnimationBundle,
+    pub collider: Collider,
+    pub rigid_body: RigidBody,
+    pub locked_axes: LockedAxes,
+    pub velocity: Velocity,
+    pub influences: Influences,
 }
 
 impl Actor {
@@ -81,8 +82,12 @@ pub struct SheepBundle {
 
 impl SheepBundle {
     pub fn new(config_set: &animation::AnimationSheet, position: Vec3) -> Self {
+        let mut actor = Actor::new(config_set, position, Collider::ball(13.0));
+        actor.animation_bundle.animation_timer.0.set_elapsed(
+            Duration::from_secs_f32(rand::random::<f32>() * 1.0)
+        );
         SheepBundle {
-            actor: Actor::new(config_set, position, Collider::ball(13.0)),
+            actor,
             flocking: Flocking::default(),
             grazing: Grazing {
                 current_direction: None,
