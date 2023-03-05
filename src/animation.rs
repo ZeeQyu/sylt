@@ -1,165 +1,71 @@
-use bevy::prelude::*;
-use bevy_rapier2d::prelude::Velocity;
-use bevy_inspector_egui::prelude::*;
-use crate::{ConfigurationSetId};
-use crate::motion::Configuration;
-use std::time::Duration;
+use crate::imports::*;
 
-// #[derive(Default)]
-// pub struct AnimationPlugin;
-//
-// impl Plugin for AnimationPlugin {
-//     fn build(&self, app: &mut App) {
-//         app
-//     }
-// }
+#[derive(Default)]
+pub struct AnimationPlugin;
 
-pub const GLOBAL_TEXTURE_SCALE: f32 = 2.0;
+impl Plugin for AnimationPlugin {
+    fn build(&self, app: &mut App) {
+        app
+            .add_startup_system(load_sprite_sheets)
+            .add_system_set(
+                SystemSet::new()
+                    .label("animation")
+                    .after("motion")
+                    // .with_run_criteria(FixedTimestep::step(TIME_STEP as f64))
+                    .with_system(animate_sprite)
+            );
+    }
+}
 
-impl AnimationConfiguration {
-    pub fn new() -> Self {
+
+#[derive(Component, Default)]
+pub struct AnimationStates {
+    current: AnimationType,
+    next: AnimationType,
+    next_flip: bool,
+}
+
+#[derive(Component, Default)]
+pub struct RandomInitAnimation;
+
+#[derive(Copy, Clone, PartialEq, Default)]
+pub enum AnimationType {
+    #[default]
+    Idle,
+    Running,
+}
+
+
+#[derive(Bundle)]
+pub struct AnimationBundle {
+    pub sprite_sheet: SpriteSheetBundle,
+    pub animation_timer: AnimationTimer,
+    pub states: AnimationStates,
+}
+
+impl AnimationBundle {
+    pub fn from(anim_sheet: &AnimationSheet, position: Vec3) -> Self {
+        let default_animation = match &anim_sheet.animation_class {
+            AnimationClass::Simple { simple } => { simple }
+            AnimationClass::Actor { idle, .. } => { idle }
+        };
         Self {
-            player: AnimationSheet {
-                sprite_sheet: String::from("collie_sheet.png"),
-                sprite_sheet_handle: None,
-                atlas_tile_columns: 4,
-                atlas_tile_rows: 4,
-                texture_size: Vec2::new(20.0, 16.0),
-                snappy_animations: true,
-                animation_class: AnimationClass::Actor {
-                    run_threshold_fraction: 0.3,
-                    flip_threshold_fraction: 0.1,
-                    idle: SingleAnimation {
-                        animation_interval: 0.3,
-                        first_index: 0,
-                        last_index: 2,
-                    },
-                    running: SingleAnimation {
-                        animation_interval: 0.15,
-                        first_index: 4,
-                        last_index: 5,
-                    },
+            sprite_sheet: SpriteSheetBundle {
+                texture_atlas: anim_sheet.sprite_sheet_handle.clone().expect(
+                    &format!("all sprite sheets should be loaded for the game to run, missing {}", anim_sheet.sprite_sheet)),
+                sprite: TextureAtlasSprite {
+                    index: anim_sheet.clamp_index(default_animation.first_index),
+                    custom_size: Some(anim_sheet.texture_size * GLOBAL_TEXTURE_SCALE),
+                    ..default()
                 },
+                transform: Transform::from_translation(position),
+                ..default()
             },
-
-            sheep: AnimationSheet {
-                sprite_sheet: String::from("sheep_sheet.png"),
-                sprite_sheet_handle: None,
-                atlas_tile_columns: 6,
-                atlas_tile_rows: 3,
-                texture_size: Vec2::new(16.0, 16.0),
-                snappy_animations: false,
-                animation_class: AnimationClass::Actor {
-                    run_threshold_fraction: 0.3,
-                    flip_threshold_fraction: 0.2,
-                    idle: SingleAnimation {
-                        animation_interval: 0.3,
-                        first_index: 0,
-                        last_index: 2,
-                    },
-                    running: SingleAnimation {
-                        animation_interval: 0.15,
-                        first_index: 7,
-                        last_index: 10,
-                    },
-                },
-            },
-            fence_horizontal: AnimationSheet {
-                sprite_sheet: String::from("fence_horizontal.png"),
-                sprite_sheet_handle: None,
-                atlas_tile_columns: 1,
-                atlas_tile_rows: 1,
-                texture_size: Vec2::new(19.0, 8.0),
-                snappy_animations: false,
-                animation_class: AnimationClass::Simple {
-                    simple: SingleAnimation {
-                        animation_interval: 1.0,
-                        first_index: 0,
-                        last_index: 0,
-                    },
-                },
-            },
-            fence_vertical: AnimationSheet {
-                sprite_sheet: String::from("fence_vertical.png"),
-                sprite_sheet_handle: None,
-                atlas_tile_columns: 1,
-                atlas_tile_rows: 1,
-                texture_size: Vec2::new(2.0, 26.0),
-                snappy_animations: false,
-                animation_class: AnimationClass::Simple {
-                    simple: SingleAnimation {
-                        animation_interval: 1.0,
-                        first_index: 0,
-                        last_index: 0,
-                    },
-                },
-            },
-            grass: AnimationSheet {
-                sprite_sheet: String::from("spritesheet.png"),
-                sprite_sheet_handle: None,
-                atlas_tile_columns: 4,
-                atlas_tile_rows: 4,
-                texture_size: Vec2::new(16.0, 16.0),
-                snappy_animations: false,
-                animation_class: AnimationClass::Simple {
-                    simple: SingleAnimation {
-                        animation_interval: 0.7,
-                        first_index: 8,
-                        last_index: 8,
-                    },
-                },
-            },
-        }
-    }
-    pub fn get_set(self: &Self, id: &ConfigurationSetId) -> &AnimationSheet {
-        match id {
-            ConfigurationSetId::Player => {
-                &self.player
-            }
-            ConfigurationSetId::Sheep => {
-                &self.sheep
-            }
-            ConfigurationSetId::Grass => {
-                &self.grass
-            }
-            ConfigurationSetId::FenceHorizontal => {
-                &self.fence_horizontal
-            }
-            ConfigurationSetId::FenceVertical => {
-                &self.fence_vertical
-            }
+            animation_timer: AnimationTimer(Timer::from_seconds(default_animation.animation_interval, TimerMode::Repeating)),
+            states: AnimationStates::default(),
         }
     }
 }
-
-#[derive(Reflect, Default, Resource, InspectorOptions)]
-#[reflect(Resource, InspectorOptions)]
-pub struct AnimationConfiguration {
-    pub player: AnimationSheet,
-    pub sheep: AnimationSheet,
-    pub fence_horizontal: AnimationSheet,
-    pub fence_vertical: AnimationSheet,
-    pub grass: AnimationSheet,
-}
-
-#[derive(Reflect, Default, Resource, InspectorOptions)]
-#[reflect(Resource, InspectorOptions)]
-pub struct AnimationSheet {
-    #[reflect(ignore)]
-    sprite_sheet: String,
-    #[reflect(ignore)]
-    sprite_sheet_handle: Option<Handle<TextureAtlas>>,
-    #[reflect(ignore)]
-    atlas_tile_columns: usize,
-    #[reflect(ignore)]
-    atlas_tile_rows: usize,
-    #[reflect(ignore)]
-    pub texture_size: Vec2,
-    snappy_animations: bool,
-    // Should we change animations frame-perfectly or wait until the next?
-    animation_class: AnimationClass,
-}
-
 impl AnimationSheet {
     fn get_anim(self: &Self, anim: AnimationType) -> &SingleAnimation {
         match &self.animation_class {
@@ -179,119 +85,6 @@ impl AnimationSheet {
         std::cmp::min(self.get_num_textures() - 1, index)
     }
 }
-
-#[derive(Reflect, Resource, InspectorOptions)]
-#[reflect(Resource, InspectorOptions)]
-enum AnimationClass {
-    Simple {
-        simple: SingleAnimation,
-    },
-    Actor {
-        idle: SingleAnimation,
-        running: SingleAnimation,
-        run_threshold_fraction: f32,
-        flip_threshold_fraction: f32,
-    },
-}
-
-impl Default for AnimationClass {
-    fn default() -> Self {
-        AnimationClass::Simple { simple: SingleAnimation::default() }
-    }
-}
-
-#[derive(Reflect, Default, Resource, InspectorOptions)]
-#[reflect(Resource, InspectorOptions)]
-struct SingleAnimation {
-    animation_interval: f32,
-    first_index: usize,
-    last_index: usize,
-}
-
-impl FromReflect for SingleAnimation {
-    fn from_reflect(_reflect: &dyn Reflect) -> Option<Self> {
-        None
-    }
-}
-
-#[derive(Component, Default)]
-pub struct AnimationStates {
-    current: AnimationType,
-    next: AnimationType,
-    next_flip: bool,
-}
-
-#[derive(Component, Default)]
-pub struct RandomInitAnimation;
-
-#[derive(Copy, Clone, PartialEq, Default)]
-enum AnimationType {
-    #[default]
-    Idle,
-    Running,
-}
-
-pub fn load_sprite_sheets(asset_server: Res<AssetServer>, texture_atlases: &mut ResMut<Assets<TextureAtlas>>, anim_config: &mut AnimationConfiguration) {
-    macro_rules! load {
-        ($name:ident, $anim:ident) => {
-            let texture_handle = asset_server.load(&anim_config.$name.sprite_sheet);
-            let mut texture_atlas = TextureAtlas::from_grid(
-                texture_handle,
-                anim_config.$name.texture_size,
-                anim_config.$name.atlas_tile_columns,
-                anim_config.$name.atlas_tile_rows,
-                None,
-                None,
-            );
-            for mut rect in texture_atlas.textures.iter_mut() {
-                rect.min = rect.min - 0.5;
-                rect.max = rect.max - 0.5;
-            }
-            let texture_atlas_handle = texture_atlases.add(texture_atlas);
-            anim_config.$name.sprite_sheet_handle = Some(texture_atlas_handle);
-        };
-    }
-    load!(player, idle);
-    load!(player, running);
-    load!(sheep, idle);
-    load!(sheep, running);
-    load!(fence_horizontal, simple);
-    load!(fence_vertical, simple);
-    load!(grass, simple);
-}
-
-
-#[derive(Bundle)]
-pub struct AnimationBundle {
-    pub sprite_sheet: SpriteSheetBundle,
-    pub animation_timer: AnimationTimer,
-    pub states: AnimationStates,
-}
-
-impl AnimationBundle {
-    pub fn from(config_set: &AnimationSheet, position: Vec3) -> Self {
-        let default_animation = match &config_set.animation_class {
-            AnimationClass::Simple { simple } => { simple }
-            AnimationClass::Actor { idle, .. } => { idle }
-        };
-        Self {
-            sprite_sheet: SpriteSheetBundle {
-                texture_atlas: config_set.sprite_sheet_handle.clone().expect(
-                    &format!("all sprite sheets should be loaded for the game to run, missing {}", config_set.sprite_sheet)),
-                sprite: TextureAtlasSprite {
-                    index: config_set.clamp_index(default_animation.first_index),
-                    custom_size: Some(config_set.texture_size * GLOBAL_TEXTURE_SCALE),
-                    ..default()
-                },
-                transform: Transform::from_translation(position),
-                ..default()
-            },
-            animation_timer: AnimationTimer(Timer::from_seconds(default_animation.animation_interval, TimerMode::Repeating)),
-            states: AnimationStates::default(),
-        }
-    }
-}
-
 #[derive(Component, Deref, DerefMut)]
 pub struct AnimationTimer(pub Timer);
 

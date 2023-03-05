@@ -1,14 +1,12 @@
-mod spawning;
 mod motion;
 mod animation;
 mod editor;
+mod entities;
+mod imports;
+mod configuration;
 
-use bevy::prelude::*;
-use bevy_rapier2d::prelude::*;
-use crate::motion::{apply_player_input, calculate_flocking, calculate_grazing, calculate_inertia, calculate_velocity, Configuration, draw_debug_lines, find_flocking_neighbours, reset_influences, run_from_players};
-use bevy_prototype_debug_lines::*;
 use bevy_inspector_egui::quick as inspector_egui;
-use iyes_loopless::prelude::*;
+use imports::*;
 
 // const TIME_STEP: f32 = 1.0 / 60.0;
 
@@ -27,56 +25,20 @@ fn main() {
             }))
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(30.0))
         .add_plugin(bevy_yoleck::bevy_egui::EguiPlugin)
-        // .add_plugin(inspector_egui::WorldInspectorPlugin)
         .add_plugin(DebugLinesPlugin::default())
         .add_plugin(inspector_egui::ResourceInspectorPlugin::<Configuration>::default())
-        // .add_fixed_timestep(Duration::from_millis(16),
-        //                     "my_fixed_update")
-        // .add_plugin(motion::MotionPlugin::default())
-        // .add_plugin(animation::AnimationPlugin::default())
-        .add_plugin(editor::EditorPlugin::default())
-        .add_system_set(
-            SystemSet::new()
-                .label("animation")
-                .after("motion")
-                // .with_run_criteria(FixedTimestep::step(TIME_STEP as f64))
-                .with_system(animation::animate_sprite)
-        )
-        .add_system_set(
-            ConditionSet::new()
-                .run_in_state(GameState::Game)
-                .label("motion_prep")
-                .with_system(find_flocking_neighbours)
-                // .with_run_criteria(FixedTimestep::step(TIME_STEP as f64))
-                .with_system(reset_influences)
-                .into()
-        )
-        .add_system_set(
-            ConditionSet::new()
-                .run_in_state(GameState::Game)
-                .label("motion")
-                .after("motion_prep")
-                // .with_run_criteria(FixedTimestep::step(TIME_STEP as f64))
-                .with_system(apply_player_input)
-                .with_system(run_from_players)
-                .with_system(calculate_flocking)
-                .with_system(calculate_grazing)
-                .with_system(calculate_inertia)
-                .into()
-        )
-        .add_system_set(
-            ConditionSet::new()
-                .run_in_state(GameState::Game)
-                .label("motion_apply")
-                .after("motion")
-                .with_system(calculate_velocity)
-                .with_system(draw_debug_lines)
-                .into()
-        )
-
+        // .add_plugin(inspector_egui::WorldInspectorPlugin)
         // .add_plugin(RapierDebugRenderPlugin::default())
         // .add_plugin(LogDiagnosticsPlugin::default())
         // .add_plugin(FrameTimeDiagnosticsPlugin::default())
+        .add_plugin(animation::AnimationPlugin::default()) // Needs to be before anything that spawns entities
+        .add_plugin(EditorPlugin::default())
+        .add_plugin(MotionPlugin::default())
+        .add_plugin(player::PlayerPlugin::default())
+        .add_plugin(sheep::SheepPlugin::default())
+        .add_plugin(sheep_cluster::SheepClusterPlugin::default())
+        .add_plugin(fence::FencePlugin::default())
+        .add_plugin(grass::GrassPlugin::default())
 
         .register_type::<Configuration>()
         .insert_resource::<Configuration>(Configuration::new())
@@ -84,7 +46,8 @@ fn main() {
         .insert_resource(ClearColor(Color::rgb_u8(46 as u8, 34 as u8, 47 as u8)))
         .insert_resource(RapierConfiguration { gravity: Vec2::ZERO, ..default() })
         .add_system(update_zoom)
-        .add_startup_system(spawning::setup)
+        .add_startup_system(spawn_camera)
+
         .run();
 }
 
@@ -95,15 +58,9 @@ enum GameState {
 }
 
 
-#[derive(Component)]
-pub enum ConfigurationSetId {
-    Player,
-    Sheep,
-    FenceHorizontal,
-    FenceVertical,
-    Grass,
+pub fn spawn_camera(mut commands: Commands) {
+    commands.spawn(Camera2dBundle::default());
 }
-
 
 fn update_zoom(
     mut query: Query<&mut OrthographicProjection>,
