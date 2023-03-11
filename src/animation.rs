@@ -5,15 +5,19 @@ pub struct AnimationPlugin;
 
 impl Plugin for AnimationPlugin {
     fn build(&self, app: &mut App) {
+        println!("AnimationPlugin build before");
         app
-            .add_startup_system(load_sprite_sheets)
+            .add_enter_system(GameState::Loading, load_sprite_sheets)
             .add_system_set(
-                SystemSet::new()
+                ConditionSet::new()
+                    .run_in_state(GameState::Game)
                     .label("animation")
                     .after("motion")
                     // .with_run_criteria(FixedTimestep::step(TIME_STEP as f64))
                     .with_system(animate_sprite)
+                    .into()
             );
+        println!("AnimationPlugin build after");
     }
 }
 

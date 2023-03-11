@@ -190,7 +190,13 @@ impl AnimationConfiguration {
         }
     }
 }
-pub fn load_sprite_sheets(asset_server: Res<AssetServer>, mut texture_atlases: ResMut<Assets<TextureAtlas>>, mut config: ResMut<Configuration>) {
+pub fn load_sprite_sheets(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut texture_atlases: ResMut<Assets<TextureAtlas>>,
+    mut config: ResMut<Configuration>
+) {
+    println!("load sprite sheets");
     let mut anim_config = &mut config.animation;
     macro_rules! load {
         ($name:ident, $anim:ident) => {
@@ -218,6 +224,7 @@ pub fn load_sprite_sheets(asset_server: Res<AssetServer>, mut texture_atlases: R
     load!(fence_horizontal, simple);
     load!(fence_vertical, simple);
     load!(grass, simple);
+    commands.insert_resource(NextState(GameState::Game))
 }
 
 

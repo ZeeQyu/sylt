@@ -16,7 +16,11 @@ impl Plugin for PlayerPlugin {
                     }
                 }))
         });
-        app.add_system(apply_player_input);
+        app.add_system_set(ConditionSet::new()
+            .run_in_state(GameState::Game)
+            .with_system(apply_player_input)
+            .into()
+        );
     }
 }
 

@@ -31,6 +31,7 @@ fn main() {
         // .add_plugin(RapierDebugRenderPlugin::default())
         // .add_plugin(LogDiagnosticsPlugin::default())
         // .add_plugin(FrameTimeDiagnosticsPlugin::default())
+        .add_loopless_state(GameState::Loading)
         .add_plugin(animation::AnimationPlugin::default()) // Needs to be before anything that spawns entities
         .add_plugin(EditorPlugin::default())
         .add_plugin(MotionPlugin::default())
@@ -53,6 +54,7 @@ fn main() {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 enum GameState {
+    Loading,
     Game,
     Editor,
 }
