@@ -4,6 +4,7 @@ mod editor;
 mod entities;
 mod imports;
 mod configuration;
+mod assets;
 
 use bevy_inspector_egui::quick as inspector_egui;
 use imports::*;
@@ -33,6 +34,7 @@ fn main() {
         // .add_plugin(RapierDebugRenderPlugin::default())
         // .add_plugin(LogDiagnosticsPlugin::default())
         // .add_plugin(FrameTimeDiagnosticsPlugin::default())
+        // .add_plugin(assets::GameAssetPlugin::default())
         .add_plugin(animation::AnimationPlugin::default()) // Needs to be before anything that spawns entities
         .add_plugin(MotionPlugin::default())
         .add_plugin(player::PlayerPlugin::default())
@@ -40,6 +42,7 @@ fn main() {
         .add_plugin(sheep_cluster::SheepClusterPlugin::default())
         .add_plugin(fence::FencePlugin::default())
         .add_plugin(grass::GrassPlugin::default())
+        .add_plugin(text::TextPlugin::default())
 
         .register_type::<Configuration>()
         .insert_resource::<Configuration>(Configuration::new())

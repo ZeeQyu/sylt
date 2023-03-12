@@ -4,6 +4,7 @@ pub use crate::configuration::*;
 pub use crate::editor::*;
 pub use crate::entities::*;
 pub use crate::motion::*;
+pub use crate::assets::*;
 pub use bevy::prelude::*;
 pub use bevy_rapier2d::prelude::*;
 pub use bevy_prototype_debug_lines::*;

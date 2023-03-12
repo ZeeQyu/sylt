@@ -44,6 +44,10 @@ impl Configuration {
                 blue: DebugLineType::InertiaInfluence,
                 gray: DebugLineType::TotalInfluence,
             },
+            global_assets: GlobalAssets {
+                font_path: String::from("fonts/eight-bit-dragon-font/EightBitDragon-anqx.ttf"),
+                font: None,
+            },
         }
     }
     pub fn get_set<'a>(self: &'a Self, id: &ConfigurationSetId) -> &'a ConfigurationSet {
@@ -73,6 +77,7 @@ pub struct Configuration {
     pub grazing_scale: f32,
     pub inertia_scale: f32,
     pub debug_lines: DebugLineConfiguration,
+    pub global_assets: GlobalAssets,
 }
 
 impl AnimationConfiguration {
@@ -218,6 +223,7 @@ pub fn load_sprite_sheets(asset_server: Res<AssetServer>, mut texture_atlases: R
     load!(fence_horizontal, simple);
     load!(fence_vertical, simple);
     load!(grass, simple);
+    config.global_assets.font = Some(asset_server.load(&config.global_assets.font_path));
 }
 
 
@@ -361,3 +367,8 @@ pub struct DebugLineConfiguration {
     pub gray: DebugLineType,
 }
 
+#[derive(Reflect, Default)]
+pub struct GlobalAssets {
+    font_path: String,
+    pub font: Option<Handle<Font>>,
+}

@@ -3,12 +3,13 @@ use crate::imports::*;
 #[derive(Default)]
 pub struct GrassPlugin;
 
-const GRASS_NAME: &str = "Grass";
+const NAME: &str = "Grass";
+const Z_INDEX: f32 = 5.0;
 
 impl Plugin for GrassPlugin {
     fn build(&self, app: &mut App) {
         app.add_yoleck_handler({
-            YoleckTypeHandler::<EditorGrass>::new(GRASS_NAME)
+            YoleckTypeHandler::<EditorGrass>::new(NAME)
                 .populate_with(populate_grass)
                 .edit_with(edit_grass)
         });
@@ -23,10 +24,10 @@ pub struct GrassBundle {
 }
 
 impl GrassBundle {
-    pub fn new(config_set: &AnimationSheet, position: Vec3) -> Self {
+    pub fn new(config_set: &AnimationSheet, position: Vec2) -> Self {
         GrassBundle {
-            animation_bundle: AnimationBundle::from(config_set, position),
-            name: Name::new(GRASS_NAME),
+            animation_bundle: AnimationBundle::from(config_set, position.extend(Z_INDEX)),
+            name: Name::new(NAME),
             config_set_id: ConfigurationSetId::Grass,
         }
     }
@@ -76,7 +77,7 @@ fn populate_grass(
             for position in data.positions.iter() {
                 commands.spawn(GrassBundle::new(
                     &configuration.animation.grass,
-                    position.extend(0.0),
+                    *position,
                 ));
             }
         });

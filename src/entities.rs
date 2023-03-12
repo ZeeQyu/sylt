@@ -3,6 +3,7 @@ pub mod fence;
 pub mod grass;
 pub mod player;
 pub mod sheep_cluster;
+pub mod text;
 
 use crate::imports::*;
 

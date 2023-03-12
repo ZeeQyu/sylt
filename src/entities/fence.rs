@@ -1,6 +1,7 @@
 use crate::imports::*;
 
-const FENCE_NAME: &str = "Fence";
+const NAME: &str = "Fence";
+const Z_INDEX: f32 = 10.0;
 
 #[derive(Default)]
 pub struct FencePlugin;
@@ -8,7 +9,7 @@ pub struct FencePlugin;
 impl Plugin for FencePlugin {
     fn build(&self, app: &mut App) {
         app.add_yoleck_handler({
-            YoleckTypeHandler::<EditorFence>::new(FENCE_NAME)
+            YoleckTypeHandler::<EditorFence>::new(NAME)
                 .populate_with(populate_fence)
                 .edit_with(edit_fence)
                 .with(yoleck_vpeol_position_edit_adapter(|data: &mut EditorFence| {
@@ -53,7 +54,7 @@ fn populate_fence(
         commands.with_children(|commands| {
             let num_sections = (data.section_length / texture_length) as u32 + 1;
             for i in 0..num_sections {
-                let position = i as f32 * axis * texture_length - 4.0 * i as f32 * axis + Vec3::Z * i as f32;
+                let position = i as f32 * axis * texture_length - 4.0 * i as f32 * axis + Vec3::Z * 0.001 * i as f32;
                 commands.spawn(FenceBundle::new(
                     &configuration.animation,
                     &data.orientation,
@@ -78,7 +79,7 @@ fn edit_fence(
                 FenceOrientation::Vertical => Vec2::X,
             };
             let value = serde_json::to_value(EditorFence { position: data.position + offset_axis * 20.0, ..data.clone() }).unwrap();
-            create_editor_object(&mut commands, &mut writer, &mut yoleck, FENCE_NAME, value);
+            create_editor_object(&mut commands, &mut writer, &mut yoleck, NAME, value);
         }
         ui.horizontal(|ui| {
             {
@@ -152,7 +153,7 @@ impl FenceBundle {
         let config_set = config.get_set(&config_set_id);
         let dimensions = config_set.texture_size;
         FenceBundle {
-            animation_bundle: AnimationBundle::from(config_set, position),
+            animation_bundle: AnimationBundle::from(config_set, position + Vec3::Z * Z_INDEX),
             collider: Collider::cuboid(dimensions.x, dimensions.y),
             rigid_body: RigidBody::Fixed,
             name: Name::new("Fence"),

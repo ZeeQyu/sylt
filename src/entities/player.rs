@@ -1,6 +1,7 @@
 use crate::imports::*;
 
-const PLAYER_NAME: &str = "Player";
+const NAME: &str = "Player";
+const Z_INDEX: f32 = 50.0;
 
 #[derive(Default)]
 pub struct PlayerPlugin;
@@ -8,7 +9,7 @@ pub struct PlayerPlugin;
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         app.add_yoleck_handler({
-            YoleckTypeHandler::<EditorPlayer>::new(PLAYER_NAME)
+            YoleckTypeHandler::<EditorPlayer>::new(NAME)
                 .populate_with(populate_player)
                 .with(yoleck_vpeol_position_edit_adapter(|data: &mut EditorPlayer| {
                     YoleckVpeolTransform2dProjection {
@@ -28,7 +29,7 @@ struct EditorPlayer {
 
 fn populate_player(mut populate: YoleckPopulate<EditorPlayer>, configuration: Res<Configuration>) {
     populate.populate(|_ctx, data, mut commands| {
-        commands.insert(PlayerBundle::new(&configuration.animation.player, data.position.extend(0.0)));
+        commands.insert(PlayerBundle::new(&configuration.animation.player, data.position));
     });
 }
 
@@ -42,9 +43,9 @@ pub struct PlayerBundle {
 }
 
 impl PlayerBundle {
-    pub fn new(config_set: &AnimationSheet, position: Vec3) -> Self {
+    pub fn new(config_set: &AnimationSheet, position: Vec2) -> Self {
         PlayerBundle {
-            actor: Actor::new(config_set, position, Collider::ball(15.0)),
+            actor: Actor::new(config_set, position.extend(Z_INDEX), Collider::ball(15.0)),
             player: PlayerInput {},
             name: Name::new("Player"),
             config_set_id: ConfigurationSetId::Player,

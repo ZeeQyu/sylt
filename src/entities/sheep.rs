@@ -1,6 +1,7 @@
 use crate::imports::*;
 
-const SHEEP_NAME: &str = "Sheep";
+const NAME: &str = "Sheep";
+const Z_INDEX: f32 = 40.0;
 
 #[derive(Default)]
 pub struct SheepPlugin;
@@ -8,7 +9,7 @@ pub struct SheepPlugin;
 impl Plugin for SheepPlugin {
     fn build(&self, app: &mut App) {
         app.add_yoleck_handler({
-            YoleckTypeHandler::<EditorSheep>::new(SHEEP_NAME)
+            YoleckTypeHandler::<EditorSheep>::new(NAME)
                 .populate_with(populate_sheep)
                 .edit_with(edit_sheep)
                 .with(yoleck_vpeol_position_edit_adapter(|data: &mut EditorSheep| {
@@ -28,7 +29,7 @@ pub struct EditorSheep {
 
 fn populate_sheep(mut populate: YoleckPopulate<EditorSheep>, configuration: Res<Configuration>) {
     populate.populate(|_ctx, data, mut commands| {
-        commands.insert(SheepBundle::new(&configuration.animation.sheep, data.position.extend(0.0)));
+        commands.insert(SheepBundle::new(&configuration.animation.sheep, data.position));
     });
 }
 
@@ -36,7 +37,7 @@ fn edit_sheep(mut edit: YoleckEdit<EditorSheep>, mut commands: Commands, mut wri
     edit.edit(|_ctx, data, ui| {
         if ui.add(egui::Button::new("Dolly!")).clicked() {
             let value = serde_json::to_value(EditorSheep { position: data.position + Vec2::splat(20.0) }).unwrap();
-            create_editor_object(&mut commands, &mut writer, &mut yoleck, SHEEP_NAME, value);
+            create_editor_object(&mut commands, &mut writer, &mut yoleck, NAME, value);
         }
     });
 }
@@ -53,8 +54,8 @@ pub struct SheepBundle {
 }
 
 impl SheepBundle {
-    pub fn new(config_set: &AnimationSheet, position: Vec3) -> Self {
-        let mut actor = Actor::new(config_set, position, Collider::ball(13.0));
+    pub fn new(config_set: &AnimationSheet, position: Vec2) -> Self {
+        let mut actor = Actor::new(config_set, position.extend(Z_INDEX), Collider::ball(13.0));
         actor.animation_bundle.animation_timer.0.set_elapsed(
             Duration::from_secs_f32(rand::random::<f32>() * 1.0)
         );

@@ -1,6 +1,6 @@
 use crate::imports::*;
 
-const SHEEP_CLUSTER_NAME: &str = "SheepCluster";
+const NAME: &str = "SheepCluster";
 
 #[derive(Default)]
 pub struct SheepClusterPlugin;
@@ -8,7 +8,7 @@ pub struct SheepClusterPlugin;
 impl Plugin for SheepClusterPlugin {
     fn build(&self, app: &mut App) {
         app.add_yoleck_handler({
-            YoleckTypeHandler::<EditorSheepCluster>::new(SHEEP_CLUSTER_NAME)
+            YoleckTypeHandler::<EditorSheepCluster>::new(NAME)
                 .populate_with(populate_sheep_cluster)
                 .edit_with(edit_sheep_cluster)
                 .with(yoleck_vpeol_position_edit_adapter(|data: &mut EditorSheepCluster| {
@@ -63,7 +63,7 @@ fn populate_sheep_cluster(
                 IsCluster,
             ));
             for sheep in data.sheep.iter() {
-                commands.spawn(sheep::SheepBundle::new(&configuration.animation.sheep, sheep.position.extend(0.0)));
+                commands.spawn(sheep::SheepBundle::new(&configuration.animation.sheep, sheep.position));
             };
         });
     });
