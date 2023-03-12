@@ -15,12 +15,11 @@ fn main() {
         .add_plugins(DefaultPlugins
             .set(ImagePlugin::default_nearest())
             .set(WindowPlugin {
-                window: WindowDescriptor {
+                primary_window: Some(Window {
                     title: String::from("Sylt"),
-                    width: 1600.0,
-                    height: 1000.0,
+                    resolution: (1600.0, 1000.0).into(),
                     ..default()
-                },
+                }),
                 ..default()
             }))
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(30.0))
@@ -40,6 +39,7 @@ fn main() {
         .add_plugin(fence::FencePlugin::default())
         .add_plugin(grass::GrassPlugin::default())
 
+        // .add_state::<GameState>()
         .register_type::<Configuration>()
         .insert_resource::<Configuration>(Configuration::new())
 
@@ -47,18 +47,27 @@ fn main() {
         .insert_resource(RapierConfiguration { gravity: Vec2::ZERO, ..default() })
         .add_system(update_zoom)
         .add_startup_system(spawn_camera)
+        .configure_set(GameSet::Animation.after(GameSet::Motion))
 
         .run();
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(States, PartialEq, Eq, Debug, Default, Hash, Clone)]
 enum GameState {
+    Loading,
+    #[default]
     Game,
     Editor,
 }
 
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
+pub enum GameSet {
+    Motion,
+    Animation,
+}
 
 pub fn spawn_camera(mut commands: Commands) {
+    println!("Spawning camera!");
     commands.spawn(Camera2dBundle::default());
 }
 

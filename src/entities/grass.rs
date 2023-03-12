@@ -5,7 +5,7 @@ pub struct GrassPlugin;
 
 impl Plugin for GrassPlugin {
     fn build(&self, app: &mut App) {
-        app.add_startup_system(spawn_grass);
+        app.add_system(spawn_grass.in_schedule(OnEnter(GameState::Game)));
     }
 }
 
@@ -19,6 +19,7 @@ pub fn spawn_grass(
         let y = distribution.sample(&mut rand::thread_rng());
         commands.spawn(GrassBundle::new(&config.animation.grass, Vec3::new(x, y, 0.0)));
     }
+    println!("Spawning grass!");
 }
 
 #[derive(Bundle)]

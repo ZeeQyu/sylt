@@ -11,8 +11,8 @@ impl Plugin for SheepPlugin {
             YoleckTypeHandler::<EditorSheep>::new(SHEEP_NAME)
                 .populate_with(populate_sheep)
                 .edit_with(edit_sheep)
-                .with(yoleck_vpeol_position_edit_adapter(|data: &mut EditorSheep| {
-                    YoleckVpeolTransform2dProjection {
+                .with(vpeol_position_edit_adapter(|data: &mut EditorSheep| {
+                    VpeolTransform2dProjection {
                         translation: &mut data.position,
                     }
                 }))

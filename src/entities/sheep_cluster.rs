@@ -11,14 +11,14 @@ impl Plugin for SheepClusterPlugin {
             YoleckTypeHandler::<EditorSheepCluster>::new(SHEEP_CLUSTER_NAME)
                 .populate_with(populate_sheep_cluster)
                 .edit_with(edit_sheep_cluster)
-                .with(yoleck_vpeol_position_edit_adapter(|data: &mut EditorSheepCluster| {
-                    YoleckVpeolTransform2dProjection {
+                .with(vpeol_position_edit_adapter(|data: &mut EditorSheepCluster| {
+                    VpeolTransform2dProjection {
                         translation: &mut data.position,
                     }
                 }))
         });
-        app.add_enter_system(GameState::Editor, show_clusters);
-        app.add_exit_system(GameState::Editor, hide_clusters);
+        app.add_system(show_clusters.in_schedule(OnEnter(GameState::Editor)));
+        app.add_system(hide_clusters.in_schedule(OnExit(GameState::Editor)));
     }
 }
 
@@ -37,7 +37,7 @@ struct EditorSheepCluster {
 fn populate_sheep_cluster(
     mut populate: YoleckPopulate<EditorSheepCluster>,
     configuration: Res<Configuration>,
-    state: Res<CurrentState<GameState>>,
+    state: Res<State<GameState>>,
 ) {
     populate.populate(|_ctx, data, mut commands| {
         commands.despawn_descendants();
@@ -45,7 +45,7 @@ fn populate_sheep_cluster(
             TransformBundle::from_transform(Transform::from_translation(data.position.extend(0.0))),
             ComputedVisibility::default(),
             Visibility::default(),
-            YoleckWillContainClickableChildren,
+            VpeolWillContainClickableChildren,
         ));
         commands.with_children(|commands| {
             commands.spawn((
@@ -57,7 +57,7 @@ fn populate_sheep_cluster(
                     },
                     transform: Transform::default(),
                     global_transform: Transform::default().into(),
-                    visibility: if state.0 == GameState::Editor { Visibility::VISIBLE } else { Visibility::INVISIBLE },
+                    visibility: if state.0 == GameState::Editor { Visibility::Visible } else { Visibility::Hidden },
                     ..default()
                 },
                 IsCluster,
@@ -108,13 +108,13 @@ struct IsCluster;
 
 fn hide_clusters(mut query: Query<&mut Visibility, With<IsCluster>>) {
     for mut visibility in query.iter_mut() {
-        visibility.is_visible = false;
+        *visibility = Visibility::Hidden;
     }
 }
 
 fn show_clusters(mut query: Query<&mut Visibility, With<IsCluster>>) {
     for mut visibility in query.iter_mut() {
-        visibility.is_visible = true;
+        *visibility = Visibility::Visible;
     }
 }
 

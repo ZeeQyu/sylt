@@ -191,6 +191,7 @@ impl AnimationConfiguration {
     }
 }
 pub fn load_sprite_sheets(asset_server: Res<AssetServer>, mut texture_atlases: ResMut<Assets<TextureAtlas>>, mut config: ResMut<Configuration>) {
+    println!("Loading sprite sheets");
     let mut anim_config = &mut config.animation;
     macro_rules! load {
         ($name:ident, $anim:ident) => {

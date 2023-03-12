@@ -11,8 +11,8 @@ impl Plugin for FencePlugin {
             YoleckTypeHandler::<EditorFence>::new(FENCE_NAME)
                 .populate_with(populate_fence)
                 .edit_with(edit_fence)
-                .with(yoleck_vpeol_position_edit_adapter(|data: &mut EditorFence| {
-                    YoleckVpeolTransform2dProjection {
+                .with(vpeol_position_edit_adapter(|data: &mut EditorFence| {
+                    VpeolTransform2dProjection {
                         translation: &mut data.position,
                     }
                 }))
@@ -48,7 +48,7 @@ fn populate_fence(
             TransformBundle::from_transform(Transform::from_translation(data.position.extend(0.0))),
             ComputedVisibility::default(),
             Visibility::default(),
-            YoleckWillContainClickableChildren,
+            VpeolWillContainClickableChildren,
         ));
         commands.with_children(|commands| {
             let num_sections = (data.section_length / texture_length) as u32 + 1;

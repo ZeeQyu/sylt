@@ -10,8 +10,8 @@ impl Plugin for PlayerPlugin {
         app.add_yoleck_handler({
             YoleckTypeHandler::<EditorPlayer>::new(PLAYER_NAME)
                 .populate_with(populate_player)
-                .with(yoleck_vpeol_position_edit_adapter(|data: &mut EditorPlayer| {
-                    YoleckVpeolTransform2dProjection {
+                .with(vpeol_position_edit_adapter(|data: &mut EditorPlayer| {
+                    VpeolTransform2dProjection {
                         translation: &mut data.position,
                     }
                 }))

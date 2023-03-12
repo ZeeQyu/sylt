@@ -7,16 +7,11 @@ impl Plugin for AnimationPlugin {
     fn build(&self, app: &mut App) {
         app
             .add_startup_system(load_sprite_sheets)
-            .add_system_set(
-                SystemSet::new()
-                    .label("animation")
-                    .after("motion")
-                    // .with_run_criteria(FixedTimestep::step(TIME_STEP as f64))
-                    .with_system(animate_sprite)
+            .add_system(
+                animate_sprite.in_set(GameSet::Animation)
             );
     }
 }
-
 
 #[derive(Component, Default)]
 pub struct AnimationStates {

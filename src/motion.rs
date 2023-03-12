@@ -1,43 +1,49 @@
 use crate::imports::*;
+use crate::imports::sheep::find_flocking_neighbours;
 
 #[derive(Default)]
 pub struct MotionPlugin;
 
 impl Plugin for MotionPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system_set(
-            ConditionSet::new()
-                .run_in_state(GameState::Game)
-                .label("motion_prep")
-                .with_system(sheep::find_flocking_neighbours)
-                // .with_run_criteria(FixedTimestep::step(TIME_STEP as f64))
-                .with_system(reset_influences)
-                .into()
+        app.configure_set(MotionSet::Prep.before(MotionSet::Main));
+        app.configure_set(MotionSet::Main.before(MotionSet::Apply));
+        app.configure_sets(
+            (
+                MotionSet::Prep,
+                MotionSet::Main,
+                MotionSet::Apply
+            ).in_set(GameSet::Motion)
         );
-        app.add_system_set(
-            ConditionSet::new()
-                .run_in_state(GameState::Game)
-                .label("motion")
-                .after("motion_prep")
-                // .with_run_criteria(FixedTimestep::step(TIME_STEP as f64))
-                .with_system(player::apply_player_input)
-                .with_system(sheep::run_from_players)
-                .with_system(sheep::calculate_flocking)
-                .with_system(sheep::calculate_grazing)
-                .with_system(sheep::calculate_inertia)
-                .into()
+        app.add_systems(
+            (
+                find_flocking_neighbours,
+                reset_influences
+            ).in_set(MotionSet::Prep)
         );
-        app
-            .add_system_set(
-                ConditionSet::new()
-                    .run_in_state(GameState::Game)
-                    .label("motion_apply")
-                    .after("motion")
-                    .with_system(calculate_velocity)
-                    .with_system(draw_debug_lines)
-                    .into()
-            );
+        app.add_systems(
+            (
+                player::apply_player_input,
+                sheep::run_from_players,
+                sheep::calculate_flocking,
+                sheep::calculate_grazing,
+                sheep::calculate_inertia,
+            ).in_set(MotionSet::Main)
+        );
+        app.add_systems(
+            (
+                calculate_velocity,
+                draw_debug_lines,
+            ).in_set(MotionSet::Apply)
+        );
     }
+}
+
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
+enum MotionSet {
+    Prep,
+    Main,
+    Apply,
 }
 
 

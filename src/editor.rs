@@ -8,14 +8,14 @@ impl Plugin for EditorPlugin {
         app
             // .add_plugin(bevy_yoleck::bevy_egui::EguiPlugin)
             .add_plugin(bevy_yoleck::YoleckPluginForEditor)
-            .add_plugin(bevy_yoleck::vpeol_2d::YoleckVpeol2dPlugin)
+            .add_plugin(bevy_yoleck::vpeol_2d::Vpeol2dPlugin)
             .add_plugin(SyncWithEditorState {
                 when_editor: GameState::Editor,
                 when_game: GameState::Game,
             })
-            .add_system(immobilize_physics_bodies.run_in_state(GameState::Editor))
-            .add_enter_system(GameState::Editor, immobilize_physics_bodies)
-            .add_exit_system(GameState::Editor, remobilize_physics_bodies)
+            .add_system(immobilize_physics_bodies.in_set(OnUpdate(GameState::Editor)))
+            .add_system(immobilize_physics_bodies.in_schedule(OnEnter(GameState::Editor)))
+            .add_system(remobilize_physics_bodies.in_schedule(OnExit(GameState::Editor)))
         ;
     }
 }
@@ -30,19 +30,23 @@ pub struct SyncWithEditorState<T>
 
 impl<T> Plugin for SyncWithEditorState<T>
     where
-        T: 'static + Sync + Send + std::fmt::Debug + Clone + std::cmp::Eq + std::hash::Hash,
+        T: 'static + States + Sync + Send + std::fmt::Debug + Clone + std::cmp::Eq + std::hash::Hash,
 {
     fn build(&self, app: &mut App) {
+        app.add_state::<T>();
+        let initial_state = self.when_editor.clone();
+        app.add_startup_system(move |mut game_state: ResMut<NextState<T>>| {
+            game_state.set(initial_state.clone());
+        });
         let when_editor = self.when_editor.clone();
-        app.add_loopless_state(when_editor.clone());
         let when_game = self.when_game.clone();
         app.add_system(
-            move |editor_state: Res<State<bevy_yoleck::YoleckEditorState>>, mut commands: Commands| {
-                let next_state = match editor_state.current() {
+            move |editor_state: Res<State<YoleckEditorState>>,
+                  mut game_state: ResMut<NextState<T>>| {
+                game_state.set(match editor_state.0 {
                     YoleckEditorState::EditorActive => when_editor.clone(),
                     YoleckEditorState::GameActive => when_game.clone(),
-                };
-                commands.insert_resource(NextState(next_state));
+                });
             },
         );
     }
