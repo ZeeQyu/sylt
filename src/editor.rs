@@ -34,7 +34,6 @@ impl<T> Plugin for SyncWithEditorState<T>
 {
     fn build(&self, app: &mut App) {
         let when_editor = self.when_editor.clone();
-        app.add_loopless_state(when_editor.clone());
         let when_game = self.when_game.clone();
         app.add_system(
             move |editor_state: Res<State<bevy_yoleck::YoleckEditorState>>, mut commands: Commands| {

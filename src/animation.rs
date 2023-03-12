@@ -6,7 +6,7 @@ pub struct AnimationPlugin;
 impl Plugin for AnimationPlugin {
     fn build(&self, app: &mut App) {
         app
-            .add_startup_system(load_sprite_sheets)
+            .add_startup_system(load_sprite_sheets.label("spritesheets"))
             .add_system_set(
                 SystemSet::new()
                     .label("animation")
