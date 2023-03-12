@@ -11,17 +11,19 @@ use imports::*;
 // const TIME_STEP: f32 = 1.0 / 60.0;
 
 fn main() {
-    App::new()
-        .add_plugins(DefaultPlugins
-            .set(ImagePlugin::default_nearest())
-            .set(WindowPlugin {
-                primary_window: Some(Window {
-                    title: String::from("Sylt"),
-                    resolution: (1600.0, 1000.0).into(),
-                    ..default()
-                }),
+    let is_editor = std::env::args().any(|arg| arg == "--editor");
+    let mut app = App::new();
+    app.add_plugins(DefaultPlugins
+        .set(ImagePlugin::default_nearest())
+        .set(WindowPlugin {
+            primary_window: Some(Window {
+                title: String::from("Sylt"),
+                resolution: (1600.0, 1000.0).into(),
                 ..default()
-            }))
+            }),
+            ..default()
+        }))
+        .add_state::<GameState>()
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(30.0))
         .add_plugin(bevy_yoleck::bevy_egui::EguiPlugin)
         .add_plugin(DebugLinesPlugin::default())
@@ -31,7 +33,6 @@ fn main() {
         // .add_plugin(LogDiagnosticsPlugin::default())
         // .add_plugin(FrameTimeDiagnosticsPlugin::default())
         .add_plugin(animation::AnimationPlugin::default()) // Needs to be before anything that spawns entities
-        .add_plugin(EditorPlugin::default())
         .add_plugin(MotionPlugin::default())
         .add_plugin(player::PlayerPlugin::default())
         .add_plugin(sheep::SheepPlugin::default())
@@ -39,7 +40,6 @@ fn main() {
         .add_plugin(fence::FencePlugin::default())
         .add_plugin(grass::GrassPlugin::default())
 
-        // .add_state::<GameState>()
         .register_type::<Configuration>()
         .insert_resource::<Configuration>(Configuration::new())
 
@@ -47,9 +47,14 @@ fn main() {
         .insert_resource(RapierConfiguration { gravity: Vec2::ZERO, ..default() })
         .add_system(update_zoom)
         .add_startup_system(spawn_camera)
-        .configure_set(GameSet::Animation.after(GameSet::Motion))
+        .configure_set(GameSet::Animation.after(GameSet::Motion));
+    if is_editor {
+        app.add_plugin(EditorPlugin::<EditorModeEditor>::default());
+    } else {
+        app.add_plugin(EditorPlugin::<EditorModeGame>::default());
+    }
 
-        .run();
+    app.run();
 }
 
 #[derive(States, PartialEq, Eq, Debug, Default, Hash, Clone)]

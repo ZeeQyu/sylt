@@ -1,9 +1,16 @@
+use std::marker::PhantomData;
 use crate::imports::*;
 
 #[derive(Default)]
-pub struct EditorPlugin;
+pub struct EditorPlugin<Mode> {
+    mode: PhantomData<Mode>
+}
+#[derive(Default)]
+pub struct EditorModeEditor;
+#[derive(Default)]
+pub struct EditorModeGame;
 
-impl Plugin for EditorPlugin {
+impl Plugin for EditorPlugin<EditorModeEditor> {
     fn build(&self, app: &mut App) {
         app
             // .add_plugin(bevy_yoleck::bevy_egui::EguiPlugin)
@@ -20,6 +27,12 @@ impl Plugin for EditorPlugin {
     }
 }
 
+impl Plugin for EditorPlugin<EditorModeGame> {
+    fn build(&self, app: &mut App) {
+        app.add_plugin(bevy_yoleck::YoleckPluginForGame);
+    }
+}
+
 pub struct SyncWithEditorState<T>
     where
         T: 'static + Sync + Send + std::fmt::Debug + Clone + std::cmp::Eq + std::hash::Hash,
@@ -33,7 +46,6 @@ impl<T> Plugin for SyncWithEditorState<T>
         T: 'static + States + Sync + Send + std::fmt::Debug + Clone + std::cmp::Eq + std::hash::Hash,
 {
     fn build(&self, app: &mut App) {
-        app.add_state::<T>();
         let initial_state = self.when_editor.clone();
         app.add_startup_system(move |mut game_state: ResMut<NextState<T>>| {
             game_state.set(initial_state.clone());
