@@ -47,7 +47,7 @@ impl PlayerBundle {
         PlayerBundle {
             actor: Actor::new(config_set, position.extend(Z_INDEX), Collider::ball(15.0)),
             player: PlayerInput {},
-            name: Name::new("Player"),
+            name: Name::new(NAME),
             config_set_id: ConfigurationSetId::Player,
         }
     }

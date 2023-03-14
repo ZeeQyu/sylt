@@ -156,7 +156,7 @@ impl FenceBundle {
             animation_bundle: AnimationBundle::from(config_set, position + Vec3::Z * Z_INDEX),
             collider: Collider::cuboid(dimensions.x, dimensions.y),
             rigid_body: RigidBody::Fixed,
-            name: Name::new("Fence"),
+            name: Name::new(NAME),
             config_set_id,
         }
     }

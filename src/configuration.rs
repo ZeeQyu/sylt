@@ -173,6 +173,21 @@ impl AnimationConfiguration {
                     },
                 },
             },
+            food: AnimationSheet {
+                sprite_sheet: String::from("spritesheet.png"),
+                sprite_sheet_handle: None,
+                atlas_tile_columns: 4,
+                atlas_tile_rows: 4,
+                texture_size: Vec2::new(16.0, 16.0),
+                snappy_animations: false,
+                animation_class: AnimationClass::Simple {
+                    simple: SingleAnimation {
+                        animation_interval: 1.0,
+                        first_index: 15,
+                        last_index: 15,
+                    }
+                },
+            },
         }
     }
     pub fn get_set(self: &Self, id: &ConfigurationSetId) -> &AnimationSheet {
@@ -191,6 +206,9 @@ impl AnimationConfiguration {
             }
             ConfigurationSetId::FenceVertical => {
                 &self.fence_vertical
+            }
+            ConfigurationSetId::Food => {
+                &self.food
             }
         }
     }
@@ -223,6 +241,7 @@ pub fn load_sprite_sheets(asset_server: Res<AssetServer>, mut texture_atlases: R
     load!(fence_horizontal, simple);
     load!(fence_vertical, simple);
     load!(grass, simple);
+    load!(food, simple);
     config.global_assets.font = Some(asset_server.load(&config.global_assets.font_path));
 }
 
@@ -235,6 +254,7 @@ pub struct AnimationConfiguration {
     pub fence_horizontal: AnimationSheet,
     pub fence_vertical: AnimationSheet,
     pub grass: AnimationSheet,
+    pub food: AnimationSheet,
 }
 
 #[derive(Reflect, Default, Resource, InspectorOptions)]
@@ -298,6 +318,7 @@ pub enum ConfigurationSetId {
     FenceHorizontal,
     FenceVertical,
     Grass,
+    Food,
 }
 
 #[derive(Reflect, Default, InspectorOptions)]

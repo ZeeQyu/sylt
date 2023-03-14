@@ -67,7 +67,7 @@ impl SheepBundle {
                 time_left: (rand::random::<f32>() * 5.0) + 0.0,
             },
             runner: Runner::default(),
-            name: Name::new("Sheep"),
+            name: Name::new(NAME),
             config_set_id: ConfigurationSetId::Sheep,
             inertia: Inertia::default(),
         }

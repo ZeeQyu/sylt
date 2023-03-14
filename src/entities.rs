@@ -4,6 +4,7 @@ pub mod grass;
 pub mod player;
 pub mod sheep_cluster;
 pub mod text;
+pub mod food;
 
 use crate::imports::*;
 
