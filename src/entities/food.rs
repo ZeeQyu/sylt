@@ -10,8 +10,8 @@ impl Plugin for FoodPlugin {
     fn build(&self, app: &mut App) {
         app.add_yoleck_handler({
             YoleckTypeHandler::<EditorFood>::new(NAME)
-                .populate_with(populate_food)
-                .edit_with(edit_food)
+                .populate_with(populate)
+                .edit_with(edit)
                 .with(yoleck_vpeol_position_edit_adapter(|data: &mut EditorFood| {
                     YoleckVpeolTransform2dProjection {
                         translation: &mut data.position,
@@ -31,7 +31,7 @@ struct EditorFood {
 }
 fn default_strength() -> f32 { 1.0 }
 
-fn populate_food(
+fn populate(
     mut populate: YoleckPopulate<EditorFood>,
     configuration: Res<Configuration>,
 ) {
@@ -43,7 +43,7 @@ fn populate_food(
     });
 }
 
-fn edit_food(
+fn edit(
     mut edit: YoleckEdit<EditorFood>,
 ) {
     edit.edit(|_ctx, data, ui| {

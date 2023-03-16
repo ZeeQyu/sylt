@@ -9,8 +9,8 @@ impl Plugin for SheepClusterPlugin {
     fn build(&self, app: &mut App) {
         app.add_yoleck_handler({
             YoleckTypeHandler::<EditorSheepCluster>::new(NAME)
-                .populate_with(populate_sheep_cluster)
-                .edit_with(edit_sheep_cluster)
+                .populate_with(populate)
+                .edit_with(edit)
                 .with(yoleck_vpeol_position_edit_adapter(|data: &mut EditorSheepCluster| {
                     YoleckVpeolTransform2dProjection {
                         translation: &mut data.position,
@@ -34,7 +34,7 @@ struct EditorSheepCluster {
     sheep: Vec<sheep::EditorSheep>,
 }
 
-fn populate_sheep_cluster(
+fn populate(
     mut populate: YoleckPopulate<EditorSheepCluster>,
     configuration: Res<Configuration>,
     state: Res<CurrentState<GameState>>,
@@ -43,8 +43,7 @@ fn populate_sheep_cluster(
         commands.despawn_descendants();
         commands.insert((
             TransformBundle::from_transform(Transform::from_translation(data.position.extend(0.0))),
-            ComputedVisibility::default(),
-            Visibility::default(),
+            VisibilityBundle::default(),
             YoleckWillContainClickableChildren,
         ));
         commands.with_children(|commands| {
@@ -69,7 +68,7 @@ fn populate_sheep_cluster(
     });
 }
 
-fn edit_sheep_cluster(mut edit: YoleckEdit<EditorSheepCluster>) {
+fn edit(mut edit: YoleckEdit<EditorSheepCluster>) {
     edit.edit(|_ctx, data, ui| {
         ui.horizontal(|ui| {
             ui.add(egui::Label::new("Num sheep"));

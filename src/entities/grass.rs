@@ -10,8 +10,8 @@ impl Plugin for GrassPlugin {
     fn build(&self, app: &mut App) {
         app.add_yoleck_handler({
             YoleckTypeHandler::<EditorGrass>::new(NAME)
-                .populate_with(populate_grass)
-                .edit_with(edit_grass)
+                .populate_with(populate)
+                .edit_with(edit)
         });
     }
 }
@@ -62,7 +62,7 @@ fn generate_positions(num: usize, extents: Vec2) -> Vec<Vec2> {
     positions
 }
 
-fn populate_grass(
+fn populate(
     mut populate: YoleckPopulate<EditorGrass>,
     configuration: Res<Configuration>,
 ) {
@@ -84,7 +84,7 @@ fn populate_grass(
     });
 }
 
-fn edit_grass(mut edit: YoleckEdit<EditorGrass>) {
+fn edit(mut edit: YoleckEdit<EditorGrass>) {
     edit.edit(|_ctx, data, ui| {
         ui.horizontal(|ui| {
             ui.add(egui::Label::new("Num grass instances"));

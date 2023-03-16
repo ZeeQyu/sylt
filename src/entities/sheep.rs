@@ -10,8 +10,8 @@ impl Plugin for SheepPlugin {
     fn build(&self, app: &mut App) {
         app.add_yoleck_handler({
             YoleckTypeHandler::<EditorSheep>::new(NAME)
-                .populate_with(populate_sheep)
-                .edit_with(edit_sheep)
+                .populate_with(populate)
+                .edit_with(edit)
                 .with(yoleck_vpeol_position_edit_adapter(|data: &mut EditorSheep| {
                     YoleckVpeolTransform2dProjection {
                         translation: &mut data.position,
@@ -27,13 +27,13 @@ pub struct EditorSheep {
     pub position: Vec2,
 }
 
-fn populate_sheep(mut populate: YoleckPopulate<EditorSheep>, configuration: Res<Configuration>) {
+fn populate(mut populate: YoleckPopulate<EditorSheep>, configuration: Res<Configuration>) {
     populate.populate(|_ctx, data, mut commands| {
         commands.insert(SheepBundle::new(&configuration.animation.sheep, data.position));
     });
 }
 
-fn edit_sheep(mut edit: YoleckEdit<EditorSheep>, mut commands: Commands, mut writer: EventWriter<YoleckEditorEvent>, mut yoleck: ResMut<YoleckState>) {
+fn edit(mut edit: YoleckEdit<EditorSheep>, mut commands: Commands, mut writer: EventWriter<YoleckEditorEvent>, mut yoleck: ResMut<YoleckState>) {
     edit.edit(|_ctx, data, ui| {
         if ui.add(egui::Button::new("Dolly!")).clicked() {
             let value = serde_json::to_value(EditorSheep { position: data.position + Vec2::splat(20.0) }).unwrap();
@@ -51,6 +51,7 @@ pub struct SheepBundle {
     name: Name,
     config_set_id: ConfigurationSetId,
     inertia: Inertia,
+    counts_toward_goal: goal_zone::CountsTowardGoal,
 }
 
 impl SheepBundle {
@@ -70,6 +71,7 @@ impl SheepBundle {
             name: Name::new(NAME),
             config_set_id: ConfigurationSetId::Sheep,
             inertia: Inertia::default(),
+            counts_toward_goal: goal_zone::CountsTowardGoal,
         }
     }
 }

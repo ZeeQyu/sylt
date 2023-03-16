@@ -5,6 +5,8 @@ pub mod player;
 pub mod sheep_cluster;
 pub mod text;
 pub mod food;
+pub mod goal_zone;
+pub mod game_rules;
 
 use crate::imports::*;
 

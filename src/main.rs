@@ -40,10 +40,12 @@ fn main() {
         .add_plugin(player::PlayerPlugin::default())
         .add_plugin(sheep::SheepPlugin::default())
         .add_plugin(sheep_cluster::SheepClusterPlugin::default())
+        .add_plugin(food::FoodPlugin::default())
         .add_plugin(fence::FencePlugin::default())
         .add_plugin(grass::GrassPlugin::default())
-        .add_plugin(food::FoodPlugin::default())
         .add_plugin(text::TextPlugin::default())
+        .add_plugin(goal_zone::GoalZonePlugin::default())
+        .add_plugin(game_rules::GameRulesPlugin::default())
 
         .register_type::<Configuration>()
         .insert_resource::<Configuration>(Configuration::new())

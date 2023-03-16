@@ -10,8 +10,8 @@ impl Plugin for FencePlugin {
     fn build(&self, app: &mut App) {
         app.add_yoleck_handler({
             YoleckTypeHandler::<EditorFence>::new(NAME)
-                .populate_with(populate_fence)
-                .edit_with(edit_fence)
+                .populate_with(populate)
+                .edit_with(edit)
                 .with(yoleck_vpeol_position_edit_adapter(|data: &mut EditorFence| {
                     YoleckVpeolTransform2dProjection {
                         translation: &mut data.position,
@@ -38,7 +38,7 @@ pub enum FenceOrientation {
     Vertical,
 }
 
-fn populate_fence(
+fn populate(
     mut populate: YoleckPopulate<EditorFence>,
     configuration: Res<Configuration>,
 ) {
@@ -65,7 +65,7 @@ fn populate_fence(
     });
 }
 
-fn edit_fence(
+fn edit(
     mut edit: YoleckEdit<EditorFence>,
     configuration: Res<Configuration>,
     mut commands: Commands,

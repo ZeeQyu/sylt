@@ -10,7 +10,7 @@ impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         app.add_yoleck_handler({
             YoleckTypeHandler::<EditorPlayer>::new(NAME)
-                .populate_with(populate_player)
+                .populate_with(populate)
                 .with(yoleck_vpeol_position_edit_adapter(|data: &mut EditorPlayer| {
                     YoleckVpeolTransform2dProjection {
                         translation: &mut data.position,
@@ -27,7 +27,7 @@ struct EditorPlayer {
     position: Vec2,
 }
 
-fn populate_player(mut populate: YoleckPopulate<EditorPlayer>, configuration: Res<Configuration>) {
+fn populate(mut populate: YoleckPopulate<EditorPlayer>, configuration: Res<Configuration>) {
     populate.populate(|_ctx, data, mut commands| {
         commands.insert(PlayerBundle::new(&configuration.animation.player, data.position));
     });
