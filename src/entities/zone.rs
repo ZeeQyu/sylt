@@ -1,13 +1,17 @@
+use bevy::ecs::query::QuerySingleError;
+use bevy::utils::tracing::event;
+use crate::entities::game_rules::GameRules;
 use crate::imports::*;
+use crate::imports::game_rules::{GameRulesCommand, VictoryCondition};
 
 const NAME: &str = "GoalZone";
 const Z_INDEX: f32 = 18.0;
 const Z_INDEX_TEXT_OFFSET: f32 = 0.1; // Should be higher than square
 
 #[derive(Default)]
-pub struct GoalZonePlugin;
+pub struct ZonePlugin;
 
-impl Plugin for GoalZonePlugin {
+impl Plugin for ZonePlugin {
     fn build(&self, app: &mut App) {
         app.add_yoleck_handler({
             YoleckTypeHandler::<EditorGoalZone>::new(NAME)
@@ -28,7 +32,7 @@ struct EditorGoalZone {
     #[serde(default)]
     position: Vec2,
     #[serde(default = "default_extents")]
-    extents: Vec2,
+    size: Vec2,
     #[serde(default = "default_target")]
     target: usize,
     #[serde(default = "default_text_size")]
@@ -52,14 +56,14 @@ fn populate(
             SpriteBundle {
                 sprite: Sprite {
                     color: Color::rgba_u8(128, 128, 128, 50),
-                    custom_size: Some(data.extents * GLOBAL_TEXTURE_SCALE),
+                    custom_size: Some(data.size),
                     ..default()
                 },
                 transform: Transform::from_translation(data.position.extend(Z_INDEX)),
                 global_transform: Transform::from_translation(data.position.extend(Z_INDEX)).into(),
                 ..default()
             },
-            Collider::cuboid(data.extents.x, data.extents.y),
+            Collider::cuboid(data.size.x / 2.0, data.size.y / 2.0),
             Sensor,
             GoalZone { target: data.target },
         )).with_children(|commands| {
@@ -91,13 +95,13 @@ fn edit(
 ) {
     edit.edit(|_ctx, data, ui| {
         ui.horizontal(|ui| {
-            ui.add(egui::Label::new("width: "));
-            ui.add(egui::DragValue::new(&mut data.extents.x));
-            ui.add(egui::Label::new("height: "));
-            ui.add(egui::DragValue::new(&mut data.extents.y));
+            ui.add(egui::Label::new("Width: "));
+            ui.add(egui::DragValue::new(&mut data.size.x));
+            ui.add(egui::Label::new("Height: "));
+            ui.add(egui::DragValue::new(&mut data.size.y));
         });
         ui.horizontal(|ui| {
-            ui.add(egui::Label::new("target number of sheep: "));
+            ui.add(egui::Label::new("Target number of sheep: "));
             ui.add(egui::DragValue::new(&mut data.target));
         });
         ui.add(egui::Slider::new(&mut data.text_size, 0.01..=5.0).logarithmic(true));
@@ -116,9 +120,12 @@ fn update_goal_zones(
     zone_query: Query<(Entity, &Children, &GoalZone)>,
     mut text_query: Query<&mut Text>,
     sheep_query: Query<Entity, (With<Collider>, With<CountsTowardGoal>)>,
-    // game_mode: Res<CurrentState<GameState>>,
+    game_mode: Res<CurrentState<GameState>>,
     rapier_context: Res<RapierContext>,
+    mut event_writer: EventWriter<GameRulesCommand>
 ) {
+    let mut any_complete = false;
+    let mut all_complete = true;
     for (zone_entity, zone_children, goal_zone) in zone_query.iter() {
         let target_num_sheep = goal_zone.target;
         let mut num_sheep = 0;
@@ -134,6 +141,16 @@ fn update_goal_zones(
                 }
             }
         }
+        if game_mode.0 == GameState::Game && num_sheep >= target_num_sheep {
+            any_complete = true;
+        } else {
+            all_complete = false;
+        }
     }
+    event_writer.send(GameRulesCommand::CheckSheepWin {
+        all_zones_done: all_complete,
+        any_zones_done: any_complete
+    });
+
 }
 

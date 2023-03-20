@@ -6,8 +6,8 @@
 // impl Plugin for GameAssetPlugin {
 //     fn build(&self, app: &mut App) {
 //         app.add_loading_state(
-//             LoadingState::new(GameState::Loading)
-//                 .continue_to_state(GameState::Editor)
+//             LoadingState::new(GameState::LoadGame)
+//                 .continue_to_state(GameState::Game)
 //                 .with_collection::<GameAssets>()
 //         );
 //     }

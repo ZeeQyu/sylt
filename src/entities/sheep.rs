@@ -51,7 +51,7 @@ pub struct SheepBundle {
     name: Name,
     config_set_id: ConfigurationSetId,
     inertia: Inertia,
-    counts_toward_goal: goal_zone::CountsTowardGoal,
+    counts_toward_goal: zone::CountsTowardGoal,
 }
 
 impl SheepBundle {
@@ -71,7 +71,7 @@ impl SheepBundle {
             name: Name::new(NAME),
             config_set_id: ConfigurationSetId::Sheep,
             inertia: Inertia::default(),
-            counts_toward_goal: goal_zone::CountsTowardGoal,
+            counts_toward_goal: zone::CountsTowardGoal,
         }
     }
 }

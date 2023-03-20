@@ -5,6 +5,7 @@ mod entities;
 mod imports;
 mod configuration;
 mod assets;
+mod levels;
 
 use bevy_inspector_egui::quick as inspector_egui;
 use imports::*;
@@ -24,8 +25,18 @@ fn main() {
                 ..default()
             },
             ..default()
-        }))
-        .add_loopless_state(GameState::Game)
+        }));
+    if is_editor {
+        app
+            .add_loopless_state(GameState::Editor)
+            .add_plugin(EditorPlugin::default());
+    } else {
+        app
+            .add_loopless_state(GameState::LoadLevels)
+            .add_plugin(bevy_yoleck::YoleckPluginForGame)
+            .add_startup_system(levels::start_first_level);
+    }
+    app
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(30.0))
         .add_plugin(bevy_yoleck::bevy_egui::EguiPlugin)
         .add_plugin(DebugLinesPlugin::default())
@@ -44,7 +55,8 @@ fn main() {
         .add_plugin(fence::FencePlugin::default())
         .add_plugin(grass::GrassPlugin::default())
         .add_plugin(text::TextPlugin::default())
-        .add_plugin(goal_zone::GoalZonePlugin::default())
+        .add_plugin(zone::ZonePlugin::default())
+        .add_plugin(levels::LevelsPlugin::default())
         .add_plugin(game_rules::GameRulesPlugin::default())
 
         .register_type::<Configuration>()
@@ -54,26 +66,13 @@ fn main() {
         .insert_resource(RapierConfiguration { gravity: Vec2::ZERO, ..default() })
         .add_system(update_zoom)
         .add_startup_system(spawn_camera);
-    if is_editor {
-        app.add_plugin(EditorPlugin::default());
-    } else {
-        app
-            .add_plugin(bevy_yoleck::YoleckPluginForGame)
-            .add_startup_system(
-                move |asset_server: Res<AssetServer>,
-                      mut yoleck_loading_command: ResMut<bevy_yoleck::YoleckLoadingCommand>| {
-                    *yoleck_loading_command = bevy_yoleck::YoleckLoadingCommand::FromAsset(
-                        asset_server.load(std::path::Path::new("levels").join("Two clusters.yol")),
-                    );
-                },
-            );
-    }
 
     app.run();
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 enum GameState {
+    LoadLevels,
     Game,
     Editor,
 }

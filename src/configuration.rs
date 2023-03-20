@@ -1,3 +1,6 @@
+use std::borrow::Borrow;
+use bevy::asset::LoadState;
+use bevy_yoleck::{YoleckLevelIndex, YoleckLevelIndexEntry, YoleckRawLevel};
 use crate::imports::*;
 
 pub const GLOBAL_TEXTURE_SCALE: f32 = 2.0;
@@ -47,6 +50,8 @@ impl Configuration {
             global_assets: GlobalAssets {
                 font_path: String::from("fonts/eight-bit-dragon-font/EightBitDragon-anqx.ttf"),
                 font: None,
+                level_index: None,
+                levels: vec![],
             },
         }
     }
@@ -213,7 +218,13 @@ impl AnimationConfiguration {
         }
     }
 }
-pub fn load_sprite_sheets(asset_server: Res<AssetServer>, mut texture_atlases: ResMut<Assets<TextureAtlas>>, mut config: ResMut<Configuration>) {
+
+pub fn load_sprite_sheets(
+    asset_server: Res<AssetServer>,
+    mut texture_atlases: ResMut<Assets<TextureAtlas>>,
+    mut config: ResMut<Configuration>,
+    level_index_assets: Res<Assets<YoleckLevelIndex>>,
+) {
     let mut anim_config = &mut config.animation;
     macro_rules! load {
         ($name:ident, $anim:ident) => {
@@ -243,6 +254,18 @@ pub fn load_sprite_sheets(asset_server: Res<AssetServer>, mut texture_atlases: R
     load!(grass, simple);
     load!(food, simple);
     config.global_assets.font = Some(asset_server.load(&config.global_assets.font_path));
+    let level_index: Handle<YoleckLevelIndex> = asset_server.load("levels/index.yoli");
+    // while asset_server.get_load_state(&level_index) != LoadState::Loaded {
+    //
+    // }
+    // config.global_assets.levels = level_index_assets
+    //     .get(&level_index).expect("This should be loaded on the row above")
+    //     .to_vec().iter()
+    //     .map(|entry: &YoleckLevelIndexEntry| -> Handle<YoleckRawLevel> {
+    //         asset_server.load(&entry.filename)
+    //     })
+    //     .collect();
+    // config.global_assets.level_index = Some(level_index);
 }
 
 
@@ -392,4 +415,6 @@ pub struct DebugLineConfiguration {
 pub struct GlobalAssets {
     font_path: String,
     pub font: Option<Handle<Font>>,
+    pub level_index: Option<Handle<YoleckLevelIndex>>,
+    pub levels: Vec<Handle<YoleckRawLevel>>,
 }

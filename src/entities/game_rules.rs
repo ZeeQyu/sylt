@@ -1,3 +1,4 @@
+use bevy_yoleck::YoleckLevelIndex;
 use crate::imports::*;
 
 const NAME: &str = "GameRules";
@@ -12,22 +13,29 @@ impl Plugin for GameRulesPlugin {
                 .populate_with(populate)
                 .edit_with(edit)
         });
+        app.add_event::<GameRulesCommand>();
+    }
+}
+
+pub enum GameRulesCommand {
+    CheckSheepWin {
+        all_zones_done: bool,
+        any_zones_done: bool,
     }
 }
 
 #[derive(Component, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-struct GameRules {
+pub struct GameRules {
     #[serde(default)]
-    victory_condition: VictoryCondition,
+    pub victory_condition: VictoryCondition,
 }
 
 #[derive(Clone, PartialEq, serde::Serialize, serde::Deserialize, Default)]
-enum VictoryCondition {
+pub enum VictoryCondition {
     #[default]
     AllGoalZones,
     AnyGoalZones,
 }
-
 
 fn populate(
     mut populate: YoleckPopulate<GameRules>,
@@ -60,3 +68,31 @@ fn edit(
     });
 }
 
+fn handle_game_rules(
+    mut event_reader: EventReader<GameRulesCommand>,
+    game_rules_query: Query<&game_rules::GameRules>,
+) {
+    let victory_conditions = if let Ok(game_rules) = game_rules_query.get_single() {
+        &game_rules.victory_condition
+    } else {
+        &VictoryCondition::AllGoalZones
+    };
+    for command in event_reader.iter() {
+        match command {
+            GameRulesCommand::CheckSheepWin { all_zones_done, any_zones_done } => {
+                match victory_conditions {
+                    VictoryCondition::AllGoalZones => {
+                        if *all_zones_done {
+                            // start_next_level();
+                        }
+                    }
+                    VictoryCondition::AnyGoalZones => {
+                        if *any_zones_done {
+                            // start_next_level();
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
