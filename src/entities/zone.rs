@@ -1,8 +1,5 @@
-use bevy::ecs::query::QuerySingleError;
-use bevy::utils::tracing::event;
-use crate::entities::game_rules::GameRules;
 use crate::imports::*;
-use crate::imports::game_rules::{GameRulesCommand, VictoryCondition};
+use crate::imports::game_rules::{GameRulesCommand};
 
 const NAME: &str = "GoalZone";
 const Z_INDEX: f32 = 18.0;
@@ -126,6 +123,7 @@ fn update_goal_zones(
 ) {
     let mut any_complete = false;
     let mut all_complete = true;
+    let mut any_zones = false;
     for (zone_entity, zone_children, goal_zone) in zone_query.iter() {
         let target_num_sheep = goal_zone.target;
         let mut num_sheep = 0;
@@ -146,11 +144,13 @@ fn update_goal_zones(
         } else {
             all_complete = false;
         }
+        any_zones = true;
     }
-    event_writer.send(GameRulesCommand::CheckSheepWin {
-        all_zones_done: all_complete,
-        any_zones_done: any_complete
-    });
-
+    if any_zones {
+        event_writer.send(GameRulesCommand::CheckSheepWin {
+            all_zones_done: all_complete,
+            any_zones_done: any_complete
+        });
+    }
 }
 

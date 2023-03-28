@@ -32,9 +32,9 @@ fn main() {
             .add_plugin(EditorPlugin::default());
     } else {
         app
-            .add_loopless_state(GameState::LoadLevels)
+            .add_loopless_state(GameState::LoadLevelIndex)
             .add_plugin(bevy_yoleck::YoleckPluginForGame)
-            .add_startup_system(levels::start_first_level);
+            .add_system(game_rules::handle_game_rules.run_in_state(GameState::Game));
     }
     app
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(30.0))
@@ -72,6 +72,7 @@ fn main() {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 enum GameState {
+    LoadLevelIndex,
     LoadLevels,
     Game,
     Editor,

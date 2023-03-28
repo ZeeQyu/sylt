@@ -1,5 +1,6 @@
-use bevy_yoleck::YoleckLevelIndex;
 use crate::imports::*;
+use crate::levels::LevelEvent;
+use crate::levels::LevelEvent::LoadNextLevel;
 
 const NAME: &str = "GameRules";
 
@@ -14,9 +15,11 @@ impl Plugin for GameRulesPlugin {
                 .edit_with(edit)
         });
         app.add_event::<GameRulesCommand>();
+        app.add_system(handle_game_rules.run_in_state(GameState::Game));
     }
 }
 
+#[derive(Debug)]
 pub enum GameRulesCommand {
     CheckSheepWin {
         all_zones_done: bool,
@@ -68,9 +71,10 @@ fn edit(
     });
 }
 
-fn handle_game_rules(
+pub fn handle_game_rules(
     mut event_reader: EventReader<GameRulesCommand>,
     game_rules_query: Query<&game_rules::GameRules>,
+    mut event_writer: EventWriter<LevelEvent>,
 ) {
     let victory_conditions = if let Ok(game_rules) = game_rules_query.get_single() {
         &game_rules.victory_condition
@@ -78,17 +82,18 @@ fn handle_game_rules(
         &VictoryCondition::AllGoalZones
     };
     for command in event_reader.iter() {
+        println!("{:?}", command);
         match command {
             GameRulesCommand::CheckSheepWin { all_zones_done, any_zones_done } => {
                 match victory_conditions {
                     VictoryCondition::AllGoalZones => {
                         if *all_zones_done {
-                            // start_next_level();
+                            event_writer.send(LoadNextLevel);
                         }
                     }
                     VictoryCondition::AnyGoalZones => {
                         if *any_zones_done {
-                            // start_next_level();
+                            event_writer.send(LoadNextLevel);
                         }
                     }
                 }

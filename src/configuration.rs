@@ -1,6 +1,4 @@
-use std::borrow::Borrow;
-use bevy::asset::LoadState;
-use bevy_yoleck::{YoleckLevelIndex, YoleckLevelIndexEntry, YoleckRawLevel};
+use bevy_yoleck::{YoleckLevelIndex, YoleckRawLevel};
 use crate::imports::*;
 
 pub const GLOBAL_TEXTURE_SCALE: f32 = 2.0;
@@ -223,7 +221,6 @@ pub fn load_sprite_sheets(
     asset_server: Res<AssetServer>,
     mut texture_atlases: ResMut<Assets<TextureAtlas>>,
     mut config: ResMut<Configuration>,
-    level_index_assets: Res<Assets<YoleckLevelIndex>>,
 ) {
     let mut anim_config = &mut config.animation;
     macro_rules! load {
@@ -254,18 +251,6 @@ pub fn load_sprite_sheets(
     load!(grass, simple);
     load!(food, simple);
     config.global_assets.font = Some(asset_server.load(&config.global_assets.font_path));
-    let level_index: Handle<YoleckLevelIndex> = asset_server.load("levels/index.yoli");
-    // while asset_server.get_load_state(&level_index) != LoadState::Loaded {
-    //
-    // }
-    // config.global_assets.levels = level_index_assets
-    //     .get(&level_index).expect("This should be loaded on the row above")
-    //     .to_vec().iter()
-    //     .map(|entry: &YoleckLevelIndexEntry| -> Handle<YoleckRawLevel> {
-    //         asset_server.load(&entry.filename)
-    //     })
-    //     .collect();
-    // config.global_assets.level_index = Some(level_index);
 }
 
 
